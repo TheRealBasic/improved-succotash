@@ -1,6 +1,4 @@
-import type { ComponentKind } from '../engine/model';
-
-export type CatalogPlacementKind = Exclude<ComponentKind, 'wire'> | 'subcircuit';
+import { SORTED_COMPONENT_CATALOG_ITEMS, type CatalogPlacementKind } from '../data/componentCatalog';
 
 export type ComponentCatalogEntry = {
   id: string;
@@ -18,61 +16,46 @@ export type ComponentCatalogCategory = {
   entries: ComponentCatalogEntry[];
 };
 
-export const COMPONENT_CATALOG: ComponentCatalogCategory[] = [
-  {
-    id: 'passive',
-    label: 'Passive',
-    entries: [
-      { id: 'resistor', kind: 'resistor', label: 'Resistor', aliases: ['R'], tags: ['passive', 'ohmic'], partNumber: 'GEN-R', shortcutId: 'place-resistor' },
-      { id: 'capacitor', kind: 'capacitor', label: 'Capacitor', aliases: ['C'], tags: ['passive', 'energy-storage'], partNumber: 'GEN-C', shortcutId: 'place-capacitor' },
-      { id: 'inductor', kind: 'inductor', label: 'Inductor', aliases: ['L', 'Coil'], tags: ['passive', 'magnetic'], partNumber: 'GEN-L', shortcutId: 'place-inductor' }
-    ]
-  },
-  {
-    id: 'sources',
-    label: 'Sources',
-    entries: [
-      { id: 'voltage-source', kind: 'voltageSource', label: 'Voltage Source', aliases: ['VSource', 'Supply'], tags: ['source', 'dc'], partNumber: 'GEN-VSRC', shortcutId: 'place-voltage' },
-      { id: 'current-source', kind: 'currentSource', label: 'Current Source', aliases: ['ISource'], tags: ['source', 'bias'], partNumber: 'GEN-ISRC', shortcutId: 'place-current' }
-    ]
-  },
-  {
-    id: 'semiconductors',
-    label: 'Semiconductors',
-    entries: [
-      { id: 'diode', kind: 'diode', label: 'Diode', aliases: ['Rectifier'], tags: ['semiconductor', 'pn-junction'], partNumber: '1N4148', shortcutId: 'place-diode' },
-      { id: 'bjt', kind: 'bjt', label: 'BJT', aliases: ['Transistor'], tags: ['semiconductor', 'bipolar'], partNumber: '2N3904', shortcutId: 'place-bjt' },
-      { id: 'mosfet', kind: 'mosfet', label: 'MOSFET', aliases: ['FET'], tags: ['semiconductor', 'switch'], partNumber: '2N7002', shortcutId: 'place-mosfet' }
-    ]
-  },
-  {
-    id: 'ics',
-    label: 'ICs',
-    entries: [
-      { id: 'op-amp', kind: 'opAmp', label: 'Op-Amp', aliases: ['Operational Amplifier'], tags: ['ic', 'analog'], partNumber: 'LM358', shortcutId: 'place-opamp' },
-      { id: 'logic-gate', kind: 'logicGate', label: 'Logic Gate', aliases: ['Gate'], tags: ['ic', 'digital'], partNumber: '74HC00', shortcutId: 'place-logic' }
-    ]
-  },
-  {
-    id: 'relays',
-    label: 'Relays',
-    entries: []
-  },
-  {
-    id: 'sensors',
-    label: 'Sensors',
-    entries: []
-  },
-  {
-    id: 'power',
-    label: 'Power',
-    entries: []
-  },
-  {
-    id: 'specialty',
-    label: 'Specialty',
-    entries: [
-      { id: 'subcircuit', kind: 'subcircuit', label: 'Subcircuit', aliases: ['Macro'], tags: ['hierarchy', 'module'], partNumber: 'SUBCKT', shortcutId: 'place-subcircuit' }
-    ]
-  }
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  passive: 'Passive',
+  sources: 'Sources',
+  semiconductors: 'Semiconductors',
+  ics: 'ICs',
+  power: 'Power',
+  sensors: 'Sensors',
+  specialty: 'Specialty',
+  rf: 'RF',
+  timing: 'Timing',
+  interface: 'Interface'
+};
+
+const ENTRY_METADATA: Record<string, { aliases: string[]; shortcutId?: string }> = {
+  resistor: { aliases: ['R'], shortcutId: 'place-resistor' },
+  capacitor: { aliases: ['C'], shortcutId: 'place-capacitor' },
+  inductor: { aliases: ['L', 'Coil'], shortcutId: 'place-inductor' },
+  'voltage-source': { aliases: ['VSource', 'Supply'], shortcutId: 'place-voltage' },
+  'current-source': { aliases: ['ISource'], shortcutId: 'place-current' },
+  diode: { aliases: ['Rectifier'], shortcutId: 'place-diode' },
+  bjt: { aliases: ['Transistor'], shortcutId: 'place-bjt' },
+  mosfet: { aliases: ['FET'], shortcutId: 'place-mosfet' },
+  'op-amp': { aliases: ['Operational Amplifier'], shortcutId: 'place-opamp' },
+  'logic-gate': { aliases: ['Gate'], shortcutId: 'place-logic' },
+  subcircuit: { aliases: ['Macro'], shortcutId: 'place-subcircuit' }
+};
+
+export const COMPONENT_CATALOG: ComponentCatalogCategory[] = Object.entries(
+  SORTED_COMPONENT_CATALOG_ITEMS.reduce<Record<string, ComponentCatalogEntry[]>>((grouped, item) => {
+    grouped[item.category] ??= [];
+    const metadata = ENTRY_METADATA[item.id];
+    grouped[item.category].push({
+      id: item.id,
+      kind: item.kind,
+      label: item.displayName,
+      aliases: metadata?.aliases ?? [item.partNumber ?? item.displayName],
+      tags: item.tags,
+      partNumber: item.partNumber,
+      shortcutId: metadata?.shortcutId
+    });
+    return grouped;
+  }, {})
+).map(([id, entries]) => ({ id, label: CATEGORY_LABELS[id] ?? id, entries }));
