@@ -2,7 +2,9 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ComponentLibrarySidebar } from '../ComponentLibrarySidebar';
+import { __componentLibraryPerf, ComponentLibrarySidebar } from '../ComponentLibrarySidebar';
+import { buildComponentCatalog } from '../componentCatalog';
+import type { ComponentCatalogItem } from '../../data/componentCatalog';
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -66,6 +68,7 @@ describe('componentCatalog sidebar grouping', () => {
 
     const timers = ics?.subcategories.find((subcategory) => subcategory.id === 'ics::timers');
     expect(timers?.entries.some((entry) => entry.id === 'ne555')).toBe(true);
+    expect(timers?.entries.find((entry) => entry.id === 'ne555')?.searchTokens).toContain('ne555');
 
     const logic = ics?.subcategories.find((subcategory) => subcategory.id === 'ics::logic-74xx-hc-hct');
     expect(logic?.entries.map((entry) => entry.id)).toContain('74hc00');
@@ -105,5 +108,76 @@ describe('componentCatalog sidebar grouping', () => {
     expect(COMPONENT_CATALOG[0]?.id).toBe('ics');
     expect(COMPONENT_CATALOG[0]?.subcategories[0]?.id).toBe('ics::timers');
     expect(COMPONENT_CATALOG[0]?.subcategories[0]?.entries[0]?.id).toBe('legacy-timer');
+  });
+
+  it('indexes search tokens at catalog build time for id, aliases, tags, and part number', () => {
+    const syntheticItem: ComponentCatalogItem = {
+      id: 'acme-opamp',
+      displayName: 'ACME Op Amp',
+      kind: 'op-amp',
+      category: 'ics',
+      subcategory: 'analog',
+      description: 'Synthetic component',
+      tags: ['Analog', 'Precision'],
+      pinCount: 8,
+      symbolVariant: 'generic',
+      pins: [],
+      editablePropertySchema: {},
+      solverBehavior: { model: 'op-amp' },
+      defaultProps: {},
+      partNumber: 'LM358N',
+      metadata: { aliases: ['Dual Op Amp'] },
+      sidebar: { category: 'ics', subcategory: 'op-amps' }
+    };
+
+    const catalog = buildComponentCatalog([syntheticItem]);
+    const entry = catalog[0]?.subcategories[0]?.entries[0];
+    expect(entry?.searchTokens).toEqual(expect.arrayContaining(['acme-opamp', 'dual op amp', 'analog', 'precision', 'lm358n']));
+  });
+
+  it('filters large synthetic catalogs with preindexed tokens', () => {
+    const baseItem: ComponentCatalogItem = {
+      id: 'synthetic',
+      displayName: 'Synthetic Part',
+      kind: 'resistor',
+      category: 'passive',
+      subcategory: 'generic',
+      description: 'Synthetic performance fixture',
+      tags: ['fixture', 'resistance'],
+      pinCount: 2,
+      symbolVariant: 'generic',
+      pins: [],
+      editablePropertySchema: {},
+      solverBehavior: { model: 'resistor' },
+      defaultProps: {},
+      metadata: { aliases: ['bench-item'] },
+      sidebar: { category: 'passive', subcategory: 'generic' }
+    };
+
+    const largeCatalog = buildComponentCatalog(
+      Array.from({ length: 5000 }, (_, index) => ({
+        ...baseItem,
+        id: `synthetic-${index}`,
+        displayName: `Synthetic Part ${index}`,
+        partNumber: `PN-${index}`,
+        tags: ['fixture', index % 2 === 0 ? 'even' : 'odd'],
+        metadata: { aliases: [`bench-item-${index}`] }
+      }))
+    );
+
+    const perfStart = performance.now();
+    const filtered = __componentLibraryPerf.filterComponentCatalog(
+      largeCatalog,
+      __componentLibraryPerf.tokenizeQuery('bench-item-4321 odd')
+    );
+    const perfDuration = performance.now() - perfStart;
+
+    const resultCount = filtered.reduce(
+      (sum, category) => sum + category.subcategories.reduce((subSum, subcategory) => subSum + subcategory.entries.length, 0),
+      0
+    );
+
+    expect(resultCount).toBe(1);
+    expect(perfDuration).toBeLessThan(150);
   });
 });
