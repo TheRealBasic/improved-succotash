@@ -60,4 +60,73 @@ describe('solveCircuit', () => {
     const result = solveCircuit(circuit);
     expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'underdetermined')).toBe(true);
   });
+
+  it('generates deterministic monte carlo distributions when seed is provided', () => {
+    const circuit: CircuitState = {
+      nodes: [
+        { id: 'gnd', reference: true },
+        { id: 'n1' }
+      ],
+      components: [
+        {
+          id: 'vs1',
+          kind: 'voltageSource',
+          from: 'n1',
+          to: 'gnd',
+          voltage: { value: 10, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'r1',
+          kind: 'resistor',
+          from: 'n1',
+          to: 'gnd',
+          resistance: {
+            value: 5,
+            known: true,
+            computed: false,
+            unit: 'Ω',
+            tolerancePct: 10,
+            tempcoPpm: 100,
+            nominalTempC: 25,
+            operatingTempC: 45
+          }
+        }
+      ]
+    };
+
+    const first = solveCircuit(circuit, { monteCarlo: { runs: 20, seed: 1234 } });
+    const second = solveCircuit(circuit, { monteCarlo: { runs: 20, seed: 1234 } });
+
+    const key = 'component:r1:current';
+    expect(first.monteCarlo?.targetDistributions[key]?.samples).toEqual(second.monteCarlo?.targetDistributions[key]?.samples);
+    expect(first.monteCarlo?.targetDistributions[key]?.stats.std).toBeGreaterThan(0);
+  });
+
+  it('emits diagnostics for invalid tolerance/tempco metadata', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }],
+      components: [
+        {
+          id: 'is1',
+          kind: 'currentSource',
+          from: 'gnd',
+          to: 'gnd',
+          current: {
+            value: 1,
+            known: true,
+            computed: false,
+            unit: 'A',
+            tolerancePct: -1,
+            tempcoPpm: Number.NaN,
+            nominalTempC: 25
+          }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit, { monteCarlo: { runs: 5, seed: 7 } });
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_tolerance')).toBe(true);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_tempco')).toBe(true);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'inconsistent_temperature')).toBe(true);
+  });
 });

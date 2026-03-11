@@ -12,6 +12,10 @@ export type ValueMetadata = {
   computed: boolean;
   unit: Unit;
   constraints?: ValueConstraint;
+  tolerancePct?: number;
+  tempcoPpm?: number;
+  nominalTempC?: number;
+  operatingTempC?: number;
 };
 
 export type ComponentKind =
@@ -97,7 +101,10 @@ export type SolverDiagnostic = {
     | 'constraint_violation'
     | 'unsupported_component_behavior'
     | 'underdetermined'
-    | 'overdetermined';
+    | 'overdetermined'
+    | 'invalid_tolerance'
+    | 'invalid_tempco'
+    | 'inconsistent_temperature';
   severity: DiagnosticSeverity;
   message: string;
   componentId?: string;
@@ -108,7 +115,28 @@ export type SolvedCircuitValue = ValueMetadata & {
   key: string;
 };
 
+export type MonteCarloSummaryStats = {
+  mean: number;
+  min: number;
+  max: number;
+  std: number;
+};
+
+export type MonteCarloTargetDistribution = {
+  key: string;
+  unit: Unit;
+  samples: number[];
+  stats: MonteCarloSummaryStats;
+};
+
+export type MonteCarloResult = {
+  runs: number;
+  seed?: number;
+  targetDistributions: Record<string, MonteCarloTargetDistribution>;
+};
+
 export type SolveCircuitResult = {
   values: Record<string, SolvedCircuitValue>;
   diagnostics: SolverDiagnostic[];
+  monteCarlo?: MonteCarloResult;
 };

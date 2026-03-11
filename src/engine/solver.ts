@@ -1,3 +1,4 @@
+import { runMonteCarloAnalysis, type MonteCarloOptions } from './analysis/monteCarlo';
 import type {
   CircuitComponent,
   CircuitNode,
@@ -9,6 +10,10 @@ import type {
   ValueConstraint,
   ValueMetadata
 } from './model';
+
+export type SolveCircuitOptions = {
+  monteCarlo?: MonteCarloOptions;
+};
 
 export type CircuitValues = {
   voltage?: number;
@@ -268,8 +273,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
 
   for (const component of voltageConstraintComponents) {
     const row = new Array<number>(unknownCount).fill(0);
-    const sourceVoltage =
-      component.kind === 'voltageSource' ? (component.voltage.value ?? 0) : 0;
+    const sourceVoltage = component.kind === 'voltageSource' ? (component.voltage.value ?? 0) : 0;
 
     const fromKnown = getKnownVoltage(component.from);
     const toKnown = getKnownVoltage(component.to);
@@ -371,7 +375,7 @@ const toSolvedValue = (key: string, unit: Unit, value: number | undefined, known
   computed
 });
 
-export const solveCircuit = (circuitState: CircuitState): SolveCircuitResult => {
+const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
   const diagnostics = validateCircuit(circuitState);
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === 'error');
   if (hasErrors) {
@@ -469,6 +473,20 @@ export const solveCircuit = (circuitState: CircuitState): SolveCircuitResult => 
   return { values, diagnostics };
 };
 
+export const solveCircuit = (circuitState: CircuitState, options?: SolveCircuitOptions): SolveCircuitResult => {
+  const baseResult = solveCircuitCore(circuitState);
+  if (options?.monteCarlo == null) {
+    return baseResult;
+  }
+
+  const monteCarloAnalysis = runMonteCarloAnalysis(circuitState, options.monteCarlo, solveCircuitCore);
+  return {
+    ...baseResult,
+    diagnostics: [...baseResult.diagnostics, ...monteCarloAnalysis.diagnostics],
+    monteCarlo: monteCarloAnalysis.monteCarlo
+  };
+};
+
 export const solveCircuitValues = (values: CircuitValues): SolvedCircuitValues => {
   const { voltage, current, resistance } = values;
 
@@ -495,4 +513,4 @@ export const solveCircuitValues = (values: CircuitValues): SolvedCircuitValues =
   };
 };
 
-export type { CircuitState, SolveCircuitResult } from './model';
+export type { CircuitNode, CircuitState, SolveCircuitResult } from './model';
