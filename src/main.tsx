@@ -45,7 +45,17 @@ const componentFactory = (kind: Exclude<ComponentKind, 'wire'>, id: string, from
     case 'voltageSource':
       return { id, kind, from, to, label: `V-${id}`, voltage: createValueMetadata('V', 5, { nonZero: true }) };
     case 'currentSource':
-      return { id, kind, from, to, label: `I-${id}`, current: createValueMetadata('A', 0.01) };
+      return { id, kind, from, to, label: `I-${id}`, current: createValueMetadata('A', 0.01), nonIdeal: { internalResistance: createValueMetadata('Ω', 0), rippleAmplitude: createValueMetadata('A', 0), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 0) } };
+    case 'diode':
+      return { id, kind, from, to, label: `D-${id}`, forwardDrop: createValueMetadata('V', 0.7), onResistance: createValueMetadata('Ω', 10, { min: 0.001, nonZero: true }), offResistance: createValueMetadata('Ω', 1_000_000, { min: 1 }) };
+    case 'bjt':
+      return { id, kind, from, to, label: `Q-${id}`, beta: createValueMetadata('A', 100), vbeOn: createValueMetadata('V', 0.7) };
+    case 'mosfet':
+      return { id, kind, from, to, label: `M-${id}`, thresholdVoltage: createValueMetadata('V', 2), onResistance: createValueMetadata('Ω', 5, { min: 0.001, nonZero: true }) };
+    case 'opAmp':
+      return { id, kind, from, to, label: `U-${id}`, gain: createValueMetadata('V', 100000), outputLimitHigh: createValueMetadata('V', 12), outputLimitLow: createValueMetadata('V', -12) };
+    case 'logicGate':
+      return { id, kind, from, to, label: `G-${id}`, gateType: 'not', bridge: { highThreshold: createValueMetadata('V', 3), lowThreshold: createValueMetadata('V', 1), highLevel: createValueMetadata('V', 5), lowLevel: createValueMetadata('V', 0) } };
   }
 };
 
@@ -243,6 +253,11 @@ const App = () => {
         if (key === 'l') addComponentAt('inductor', 380, 260);
         if (key === 'v') addComponentAt('voltageSource', 380, 260);
         if (key === 'i') addComponentAt('currentSource', 380, 260);
+        if (key === 'o') addComponentAt('diode', 380, 260);
+        if (key === 'b') addComponentAt('bjt', 380, 260);
+        if (key === 'm') addComponentAt('mosfet', 380, 260);
+        if (key === 'p') addComponentAt('opAmp', 380, 260);
+        if (key === 't') addComponentAt('logicGate', 380, 260);
         if (key === 's') addSubcircuitAt(380, 260);
         if (key === 'w' && selectedNodeId) startOrCompleteWire(selectedNodeId);
         if (key === 'd') duplicateSelected();
@@ -515,7 +530,7 @@ const App = () => {
 
   const updateComponentValue = (
     componentId: string,
-    valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current',
+    valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current' | 'forwardDrop' | 'beta' | 'thresholdVoltage' | 'gain' | 'highThreshold' | 'internalResistance' | 'rippleAmplitude',
     value: number
   ) => {
     applyCircuitUpdate((current) => ({
@@ -539,6 +554,30 @@ const App = () => {
         }
         if (valueKey === 'current' && component.kind === 'currentSource') {
           return { ...component, current: { ...component.current, value } };
+        }
+        if (valueKey === 'internalResistance' && (component.kind === 'currentSource' || component.kind === 'voltageSource')) {
+          return { ...component, nonIdeal: { ...component.nonIdeal, internalResistance: { ...(component.nonIdeal?.internalResistance ?? createValueMetadata('Ω', 0)), value } } };
+        }
+        if (valueKey === 'rippleAmplitude' && component.kind === 'voltageSource') {
+          return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('V', 0)), value } } };
+        }
+        if (valueKey === 'rippleAmplitude' && component.kind === 'currentSource') {
+          return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('A', 0)), value } } };
+        }
+        if (valueKey === 'forwardDrop' && component.kind === 'diode') {
+          return { ...component, forwardDrop: { ...component.forwardDrop, value } };
+        }
+        if (valueKey === 'beta' && component.kind === 'bjt') {
+          return { ...component, beta: { ...component.beta, value } };
+        }
+        if (valueKey === 'thresholdVoltage' && component.kind === 'mosfet') {
+          return { ...component, thresholdVoltage: { ...component.thresholdVoltage, value } };
+        }
+        if (valueKey === 'gain' && component.kind === 'opAmp') {
+          return { ...component, gain: { ...component.gain, value } };
+        }
+        if (valueKey === 'highThreshold' && component.kind === 'logicGate') {
+          return { ...component, bridge: { ...component.bridge, highThreshold: { ...component.bridge.highThreshold, value } } };
         }
 
         return component;

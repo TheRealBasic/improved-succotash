@@ -1,4 +1,4 @@
-export type Unit = 'V' | 'A' | 'Ω' | 'F' | 'H';
+export type Unit = 'V' | 'A' | 'Ω' | 'F' | 'H' | 'Hz';
 
 export type ValueConstraint = {
   min?: number;
@@ -24,7 +24,27 @@ export type ComponentKind =
   | 'inductor'
   | 'voltageSource'
   | 'currentSource'
+  | 'diode'
+  | 'bjt'
+  | 'mosfet'
+  | 'opAmp'
+  | 'logicGate'
   | 'wire';
+
+export type LogicGateType = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor';
+
+export type LogicLevelBridge = {
+  highThreshold: ValueMetadata;
+  lowThreshold: ValueMetadata;
+  highLevel: ValueMetadata;
+  lowLevel: ValueMetadata;
+};
+
+export type SourceNonIdeal = {
+  internalResistance?: ValueMetadata;
+  rippleAmplitude?: ValueMetadata;
+  rippleFrequencyHz?: ValueMetadata;
+};
 
 export type CircuitNode = {
   id: string;
@@ -77,11 +97,45 @@ export type InductorComponent = ComponentBase & {
 export type VoltageSourceComponent = ComponentBase & {
   kind: 'voltageSource';
   voltage: ValueMetadata;
+  nonIdeal?: SourceNonIdeal;
 };
 
 export type CurrentSourceComponent = ComponentBase & {
   kind: 'currentSource';
   current: ValueMetadata;
+  nonIdeal?: SourceNonIdeal;
+};
+
+export type DiodeComponent = ComponentBase & {
+  kind: 'diode';
+  forwardDrop: ValueMetadata;
+  onResistance: ValueMetadata;
+  offResistance: ValueMetadata;
+};
+
+export type BjtComponent = ComponentBase & {
+  kind: 'bjt';
+  beta: ValueMetadata;
+  vbeOn: ValueMetadata;
+};
+
+export type MosfetComponent = ComponentBase & {
+  kind: 'mosfet';
+  thresholdVoltage: ValueMetadata;
+  onResistance: ValueMetadata;
+};
+
+export type OpAmpComponent = ComponentBase & {
+  kind: 'opAmp';
+  gain: ValueMetadata;
+  outputLimitHigh: ValueMetadata;
+  outputLimitLow: ValueMetadata;
+};
+
+export type LogicGateComponent = ComponentBase & {
+  kind: 'logicGate';
+  gateType: LogicGateType;
+  bridge: LogicLevelBridge;
 };
 
 export type WireComponent = ComponentBase & {
@@ -94,6 +148,11 @@ export type CircuitComponent =
   | InductorComponent
   | VoltageSourceComponent
   | CurrentSourceComponent
+  | DiodeComponent
+  | BjtComponent
+  | MosfetComponent
+  | OpAmpComponent
+  | LogicGateComponent
   | WireComponent;
 
 export type CircuitEdge = {

@@ -49,7 +49,7 @@ const cloneCircuit = (circuit: CircuitState): CircuitState => ({
   })),
   components: circuit.components.map((component) => {
     if (component.kind === 'wire') {
-      return { ...component };
+      return component;
     }
     if (component.kind === 'resistor') {
       return { ...component, resistance: { ...component.resistance, constraints: component.resistance.constraints ? { ...component.resistance.constraints } : undefined } };
@@ -63,7 +63,25 @@ const cloneCircuit = (circuit: CircuitState): CircuitState => ({
     if (component.kind === 'voltageSource') {
       return { ...component, voltage: { ...component.voltage, constraints: component.voltage.constraints ? { ...component.voltage.constraints } : undefined } };
     }
-    return { ...component, current: { ...component.current, constraints: component.current.constraints ? { ...component.current.constraints } : undefined } };
+    if (component.kind === 'currentSource') {
+      return { ...component, current: { ...component.current, constraints: component.current.constraints ? { ...component.current.constraints } : undefined } };
+    }
+    if (component.kind === 'diode') {
+      return { ...component, forwardDrop: { ...component.forwardDrop }, onResistance: { ...component.onResistance }, offResistance: { ...component.offResistance } };
+    }
+    if (component.kind === 'bjt') {
+      return { ...component, beta: { ...component.beta }, vbeOn: { ...component.vbeOn } };
+    }
+    if (component.kind === 'mosfet') {
+      return { ...component, thresholdVoltage: { ...component.thresholdVoltage }, onResistance: { ...component.onResistance } };
+    }
+    if (component.kind === 'opAmp') {
+      return { ...component, gain: { ...component.gain }, outputLimitHigh: { ...component.outputLimitHigh }, outputLimitLow: { ...component.outputLimitLow } };
+    }
+    if (component.kind === 'logicGate') {
+      return { ...component, bridge: { highThreshold: { ...component.bridge.highThreshold }, lowThreshold: { ...component.bridge.lowThreshold }, highLevel: { ...component.bridge.highLevel }, lowLevel: { ...component.bridge.lowLevel } } };
+    }
+    return component;
   }),
   edges: circuit.edges?.map((edge) => ({ ...edge }))
 });
@@ -98,6 +116,16 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
       return component.voltage;
     case 'currentSource':
       return component.current;
+    case 'diode':
+      return component.forwardDrop;
+    case 'bjt':
+      return component.beta;
+    case 'mosfet':
+      return component.thresholdVoltage;
+    case 'opAmp':
+      return component.gain;
+    case 'logicGate':
+      return component.bridge.highThreshold;
     default:
       return undefined;
   }

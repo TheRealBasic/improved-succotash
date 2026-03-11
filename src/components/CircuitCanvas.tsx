@@ -59,6 +59,11 @@ const componentPalette: Array<{ kind: Exclude<ComponentKind, 'wire'> | 'subcircu
   { kind: 'currentSource', label: 'Current Source', shortcutId: 'place-current' },
   { kind: 'capacitor', label: 'Capacitor', shortcutId: 'place-capacitor' },
   { kind: 'inductor', label: 'Inductor', shortcutId: 'place-inductor' },
+  { kind: 'diode', label: 'Diode', shortcutId: 'place-diode' },
+  { kind: 'bjt', label: 'BJT', shortcutId: 'place-bjt' },
+  { kind: 'mosfet', label: 'MOSFET', shortcutId: 'place-mosfet' },
+  { kind: 'opAmp', label: 'Op-Amp', shortcutId: 'place-opamp' },
+  { kind: 'logicGate', label: 'Logic Gate', shortcutId: 'place-logic' },
   { kind: 'subcircuit', label: 'Subcircuit', shortcutId: 'place-subcircuit' }
 ];
 
@@ -127,6 +132,28 @@ const buildOrthogonalRoute = (start: Point, end: Point, blocked: Rect[]): Point[
 
   path.push(start);
   return path.reverse();
+};
+
+
+const renderComponentSymbol = (component: CanvasComponent, fromNode: CanvasNodePosition, toNode: CanvasNodePosition) => {
+  const midX = (fromNode.x + toNode.x) / 2;
+  const midY = (fromNode.y + toNode.y) / 2;
+  if (component.kind === 'diode') {
+    return <>
+      <polygon points={`${midX - 10},${midY - 10} ${midX - 10},${midY + 10} ${midX + 4},${midY}`} fill="none" stroke="#ffd36d" strokeWidth={2} />
+      <line x1={midX + 6} y1={midY - 10} x2={midX + 6} y2={midY + 10} stroke="#ffd36d" strokeWidth={2} />
+    </>;
+  }
+  if (component.kind === 'opAmp') {
+    return <polygon points={`${midX - 12},${midY - 14} ${midX - 12},${midY + 14} ${midX + 14},${midY}`} fill="none" stroke="#9ae6ff" strokeWidth={2} />;
+  }
+  if (component.kind === 'logicGate') {
+    return <rect x={midX - 12} y={midY - 10} width={24} height={20} fill="none" stroke="#9dffcc" strokeWidth={2} rx={4} />;
+  }
+  if (component.kind === 'bjt' || component.kind === 'mosfet') {
+    return <circle cx={midX} cy={midY} r={10} fill="none" stroke="#ffb4f3" strokeWidth={2} />;
+  }
+  return null;
 };
 
 export const CircuitCanvas = ({
@@ -341,6 +368,7 @@ export const CircuitCanvas = ({
                 strokeWidth={isSelected ? 5 : 3}
                 onClick={() => onSelectComponent(component.id)}
               />
+              {renderComponentSymbol(component, fromNode, toNode)}
               <text
                 x={(fromNode.x + toNode.x) / 2}
                 y={(fromNode.y + toNode.y) / 2 - 8}

@@ -84,7 +84,10 @@ const linearSweep = (start: number, stop: number, points: number): number[] => {
   return Array.from({ length: points }, (_, i) => start + i * step);
 };
 
-const getSourceVoltage = (component: CircuitComponent): number => (component.kind === 'voltageSource' ? (component.voltage.value ?? 0) : 0);
+const getSourceVoltage = (component: CircuitComponent): number => {
+  if (component.kind !== 'voltageSource') return 0;
+  return (component.voltage.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0);
+};
 
 const nodeIndexMap = (circuit: CircuitState): { nodeIds: string[]; map: Map<string, number> } => {
   const nodeIds = circuit.nodes.filter((node) => !node.reference).map((node) => node.id);
@@ -129,7 +132,7 @@ const buildAndSolveAtFrequency = (circuit: CircuitState, frequency: number): AcP
       const y = omega === 0 || L === 0 ? c(1e12, 0) : c(0, -1 / (omega * L));
       stampAdmittance(component.from, component.to, y);
     } else if (component.kind === 'currentSource') {
-      stampCurrent(component.from, component.to, c(component.current.value ?? 0, 0));
+      stampCurrent(component.from, component.to, c((component.current.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0), 0));
     }
   }
 

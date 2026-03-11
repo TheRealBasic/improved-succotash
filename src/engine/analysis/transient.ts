@@ -115,7 +115,7 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
       if (component.kind === 'resistor' && component.resistance.value) {
         stampConductance(component.from, component.to, 1 / component.resistance.value);
       } else if (component.kind === 'currentSource') {
-        stampCurrent(component.from, component.to, component.current.value ?? 0);
+        stampCurrent(component.from, component.to, (component.current.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0));
       } else if (component.kind === 'capacitor') {
         const C = component.capacitance.value ?? 0;
         const G = options.timeStep === 0 ? 0 : C / options.timeStep;

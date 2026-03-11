@@ -261,3 +261,73 @@ describe('solveCircuit target solving', () => {
     expect(result.target?.unique).toBe(false);
   });
 });
+
+describe('extended component family canonical circuits', () => {
+  const baseNodes = [{ id: 'gnd', reference: true }, { id: 'n1' }] as const;
+
+  it('supports diode canonical DC path', () => {
+    const result = solveCircuit({
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'd1', kind: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.7, known: true, computed: false, unit: 'V' }, onResistance: { value: 10, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 1e6, known: true, computed: false, unit: 'Ω' } }
+      ]
+    });
+    expect(result.values['component:d1:current']?.value).toBeTypeOf('number');
+  });
+
+  it('supports bjt canonical DC path', () => {
+    const result = solveCircuit({
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'q1', kind: 'bjt', from: 'n1', to: 'gnd', beta: { value: 100, known: true, computed: false, unit: 'A' }, vbeOn: { value: 0.7, known: true, computed: false, unit: 'V' } }
+      ]
+    });
+    expect(result.values['component:q1:current']?.value).toBeTypeOf('number');
+  });
+
+  it('supports mosfet canonical DC path', () => {
+    const result = solveCircuit({
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'm1', kind: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 5, known: true, computed: false, unit: 'Ω' } }
+      ]
+    });
+    expect(result.values['component:m1:current']?.value).toBeTypeOf('number');
+  });
+
+  it('supports op-amp canonical output clamp', () => {
+    const result = solveCircuit({
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 1, known: true, computed: false, unit: 'V' } },
+        { id: 'u1', kind: 'opAmp', from: 'n1', to: 'gnd', gain: { value: 1e5, known: true, computed: false, unit: 'V' }, outputLimitHigh: { value: 12, known: true, computed: false, unit: 'V' }, outputLimitLow: { value: -12, known: true, computed: false, unit: 'V' } }
+      ]
+    });
+    expect(result.values['component:u1:output']?.value).toBeTypeOf('number');
+  });
+
+  it('supports logic gate mixed-signal bridge', () => {
+    const result = solveCircuit({
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'g1', kind: 'logicGate', from: 'n1', to: 'gnd', gateType: 'not', bridge: { highThreshold: { value: 3, known: true, computed: false, unit: 'V' }, lowThreshold: { value: 1, known: true, computed: false, unit: 'V' }, highLevel: { value: 5, known: true, computed: false, unit: 'V' }, lowLevel: { value: 0, known: true, computed: false, unit: 'V' } } }
+      ]
+    });
+    expect(result.values['component:g1:logic_output']?.value).toBeTypeOf('number');
+  });
+
+  it('includes source non-ideal internal resistance/ripple effects', () => {
+    const result = solveCircuit({
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' }, nonIdeal: { internalResistance: { value: 1, known: true, computed: false, unit: 'Ω' }, rippleAmplitude: { value: 0.2, known: true, computed: false, unit: 'V' }, rippleFrequencyHz: { value: 120, known: true, computed: false, unit: 'Hz' } } },
+        { id: 'r1', kind: 'resistor', from: 'n1', to: 'gnd', resistance: { value: 10, known: true, computed: false, unit: 'Ω' } }
+      ]
+    });
+    expect(result.values['component:r1:current']?.value).toBeTypeOf('number');
+  });
+});
