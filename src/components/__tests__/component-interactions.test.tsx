@@ -81,13 +81,16 @@ describe('PropertyPanel updates and rendering', () => {
       <PropertyPanel
         selectedComponent={selectedResistor}
         solved={{ values: {}, diagnostics: [] }}
+        selectedTarget={{ type: 'component_value', componentId: 'r1' }}
+        onChangeSelectedTarget={vi.fn()}
+        onSolveForTarget={vi.fn()}
         onUpdateComponentValue={onUpdateComponentValue}
         onValueApplied={onValueApplied}
       />
     );
 
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '2.5' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'k' } });
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'k' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(onUpdateComponentValue).toHaveBeenCalledWith('r1', 'resistance', 2500);
@@ -118,6 +121,9 @@ describe('PropertyPanel updates and rendering', () => {
       <PropertyPanel
         selectedComponent={selectedResistor}
         solved={solved}
+        selectedTarget={{ type: 'component_current', componentId: 'r1' }}
+        onChangeSelectedTarget={vi.fn()}
+        onSolveForTarget={vi.fn()}
         onUpdateComponentValue={vi.fn()}
         onValueApplied={vi.fn()}
       />

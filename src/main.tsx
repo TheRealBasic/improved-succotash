@@ -4,9 +4,9 @@ import { CircuitCanvas, type CanvasComponent } from './components/CircuitCanvas'
 import { PropertyPanel } from './components/PropertyPanel';
 import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
-import type { CircuitComponent, ComponentKind, SolveCircuitResult, Unit, ValueMetadata } from './engine/model';
+import type { CircuitComponent, ComponentKind, SolveCircuitResult, SolveTarget, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
 import { runAnalysis, simulateStep } from './engine/simulation';
-import { solveCircuitValues } from './engine/solver';
+import { solveCircuitForTarget, solveCircuitValues } from './engine/solver';
 import './styles/theme.css';
 import './styles/animations.css';
 
@@ -73,6 +73,8 @@ const App = () => {
   const [selectedComponentId, setSelectedComponentId] = useState<string | undefined>(undefined);
   const [pendingWireFromNodeId, setPendingWireFromNodeId] = useState<string | undefined>(undefined);
   const [solved, setSolved] = useState<SolveCircuitResult>({ values: {}, diagnostics: [] });
+  const [selectedTarget, setSelectedTarget] = useState<SolveTarget>({ type: 'node_voltage', nodeId: 'gnd' });
+  const [targetResult, setTargetResult] = useState<TargetSolveResult | undefined>(undefined);
   const [simulationActive, setSimulationActive] = useState(false);
   const [simulationTime, setSimulationTime] = useState(0);
   const [mode, setMode] = useState<'dc' | 'ac'>('dc');
@@ -336,6 +338,23 @@ const App = () => {
     }
   };
 
+  const solveForTarget = () => {
+    const result = solveCircuitForTarget(
+      {
+        nodes: circuit.nodes.map((node) => ({
+          id: node.id,
+          reference: node.reference,
+          voltage: node.reference ? { value: 0, known: true, computed: false, unit: 'V' } : undefined
+        })),
+        components: circuit.components
+      },
+      selectedTarget
+    );
+
+    setSolved(result);
+    setTargetResult(result.target);
+  };
+
   const simulationSnapshot = simulateStep(
     {
       voltage: solvedTriangle.voltage,
@@ -443,7 +462,24 @@ const App = () => {
           }}
           onStartOrCompleteWire={startOrCompleteWire}
         />
-        <PropertyPanel selectedComponent={selectedComponent} solved={solved} onUpdateComponentValue={updateComponentValue} onValueApplied={() => playSfx('connect')} />
+        <PropertyPanel
+          selectedComponent={selectedComponent}
+          selectedNodeId={selectedNodeId}
+          solved={solved}
+          targetResult={targetResult}
+          selectedTarget={selectedTarget}
+          onChangeSelectedTarget={(target) => {
+            if (target.type === 'node_voltage') {
+              setSelectedTarget({ type: 'node_voltage', nodeId: target.nodeId || selectedNodeId || 'gnd' });
+              return;
+            }
+
+            setSelectedTarget({ type: target.type, componentId: target.componentId || selectedComponentId || '' });
+          }}
+          onSolveForTarget={solveForTarget}
+          onUpdateComponentValue={updateComponentValue}
+          onValueApplied={() => playSfx('connect')}
+        />
       </section>
     </main>
   );

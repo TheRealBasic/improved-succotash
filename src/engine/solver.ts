@@ -4,8 +4,10 @@ import type {
   CircuitNode,
   CircuitState,
   SolveCircuitResult,
+  SolveTarget,
   SolvedCircuitValue,
   SolverDiagnostic,
+  TargetSolveResult,
   Unit,
   ValueConstraint,
   ValueMetadata
@@ -13,6 +15,7 @@ import type {
 
 export type SolveCircuitOptions = {
   monteCarlo?: MonteCarloOptions;
+  target?: SolveTarget;
 };
 
 export type CircuitValues = {
@@ -475,15 +478,98 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
 
 export const solveCircuit = (circuitState: CircuitState, options?: SolveCircuitOptions): SolveCircuitResult => {
   const baseResult = solveCircuitCore(circuitState);
+  const diagnostics = [...baseResult.diagnostics];
+
+  if (options?.target) {
+    const targetKey = getTargetKey(options.target);
+    const hasSolveError = diagnostics.some((diagnostic) => diagnostic.severity === 'error');
+    if (hasSolveError) {
+      diagnostics.push({
+        code: 'target_unsolvable',
+        severity: 'error',
+        message: `Target ${targetKey} is unsolvable because circuit equations failed.`
+      });
+    } else if (!(targetKey in baseResult.values)) {
+      diagnostics.push({
+        code: 'target_not_found',
+        severity: 'error',
+        message: `Target ${targetKey} was not found in solved outputs.`
+      });
+    }
+
+    if (diagnostics.some((diagnostic) => diagnostic.code === 'underdetermined')) {
+      diagnostics.push({
+        code: 'target_non_unique',
+        severity: 'error',
+        message: `Target ${targetKey} is not unique with the current constraints.`
+      });
+    }
+  }
+
   if (options?.monteCarlo == null) {
-    return baseResult;
+    return { ...baseResult, diagnostics };
   }
 
   const monteCarloAnalysis = runMonteCarloAnalysis(circuitState, options.monteCarlo, solveCircuitCore);
   return {
     ...baseResult,
-    diagnostics: [...baseResult.diagnostics, ...monteCarloAnalysis.diagnostics],
+    diagnostics: [...diagnostics, ...monteCarloAnalysis.diagnostics],
     monteCarlo: monteCarloAnalysis.monteCarlo
+  };
+};
+
+
+export type SolveForTargetResult = SolveCircuitResult & {
+  target?: TargetSolveResult;
+};
+
+function getTargetKey(target: SolveTarget): string {
+  if (target.type === 'node_voltage') {
+    return `node:${target.nodeId}:voltage`;
+  }
+  if (target.type === 'component_current') {
+    return `component:${target.componentId}:current`;
+  }
+  return `component:${target.componentId}:resistance`;
+}
+
+function getTargetDependencies(target: SolveTarget, circuitState: CircuitState): string[] {
+  if (target.type === 'node_voltage') {
+    const incident = circuitState.components
+      .filter((component) => component.from === target.nodeId || component.to === target.nodeId)
+      .map((component) => `component:${component.id}`);
+    return [`node:${target.nodeId}`, ...incident];
+  }
+
+  const component = circuitState.components.find((entry) => entry.id === target.componentId);
+  if (!component) {
+    return [`component:${target.componentId}`];
+  }
+
+  return [`component:${component.id}`, `node:${component.from}`, `node:${component.to}`];
+}
+
+function getTargetUnit(target: SolveTarget, values: Record<string, SolvedCircuitValue>): Unit {
+  const key = getTargetKey(target);
+  return values[key]?.unit ?? (target.type === 'component_value' ? 'Ω' : target.type === 'component_current' ? 'A' : 'V');
+}
+
+export const solveCircuitForTarget = (circuitState: CircuitState, target: SolveTarget, options?: Omit<SolveCircuitOptions, 'target'>): SolveForTargetResult => {
+  const baseResult = solveCircuit(circuitState, { ...options, target });
+  const targetKey = getTargetKey(target);
+  const targetValue = baseResult.values[targetKey];
+  const dependencies = getTargetDependencies(target, circuitState);
+  const unique = !baseResult.diagnostics.some((diagnostic) => diagnostic.code === 'underdetermined' || diagnostic.code === 'target_non_unique');
+
+  return {
+    ...baseResult,
+    target: {
+      key: targetKey,
+      value: targetValue?.value,
+      unit: targetValue?.unit ?? getTargetUnit(target, baseResult.values),
+      dependencies,
+      unique
+    }
   };
 };
 
@@ -513,4 +599,4 @@ export const solveCircuitValues = (values: CircuitValues): SolvedCircuitValues =
   };
 };
 
-export type { CircuitNode, CircuitState, SolveCircuitResult } from './model';
+export type { CircuitNode, CircuitState, SolveCircuitResult, SolveTarget, TargetSolveResult } from './model';

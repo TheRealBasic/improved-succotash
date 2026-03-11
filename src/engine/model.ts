@@ -104,7 +104,10 @@ export type SolverDiagnostic = {
     | 'overdetermined'
     | 'invalid_tolerance'
     | 'invalid_tempco'
-    | 'inconsistent_temperature';
+    | 'inconsistent_temperature'
+    | 'target_unsolvable'
+    | 'target_non_unique'
+    | 'target_not_found';
   severity: DiagnosticSeverity;
   message: string;
   componentId?: string;
@@ -139,4 +142,17 @@ export type SolveCircuitResult = {
   values: Record<string, SolvedCircuitValue>;
   diagnostics: SolverDiagnostic[];
   monteCarlo?: MonteCarloResult;
+};
+
+export type SolveTarget =
+  | { type: 'node_voltage'; nodeId: string }
+  | { type: 'component_current'; componentId: string }
+  | { type: 'component_value'; componentId: string };
+
+export type TargetSolveResult = {
+  key: string;
+  value?: number;
+  unit: Unit;
+  dependencies: string[];
+  unique: boolean;
 };
