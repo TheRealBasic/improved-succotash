@@ -334,6 +334,37 @@ body {
   padding: 0.5rem;
 }
 
+
+.library-subcategories {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.45rem;
+}
+
+.library-subcategory {
+  border: 1px solid #2a3d73;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(8, 13, 28, 0.5);
+}
+
+.library-subcategory-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid #2a3d73;
+  background: rgba(20, 31, 66, 0.85);
+  color: #dce5ff;
+  padding: 0.38rem 0.55rem;
+  font-size: 0.9rem;
+}
+
+.library-subcategory .inventory-grid {
+  padding: 0.45rem;
+}
+
 .palette-item small {
   opacity: 0.85;
   margin-left: 0.4rem;
