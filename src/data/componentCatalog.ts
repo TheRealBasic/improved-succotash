@@ -61,7 +61,80 @@ export type ComponentCatalogItem = {
   packageHint?: string;
   footprintHint?: string;
   compatibilityTags?: string[];
+  sidebar?: {
+    category: string;
+    subcategory: string;
+  };
 };
+
+export const SIDEBAR_GROUPING = {
+  passive: {
+    label: 'Passive',
+    order: 0,
+    subcategories: {
+      generic: { label: 'Generic', order: 0 }
+    }
+  },
+  sources: {
+    label: 'Sources',
+    order: 1,
+    subcategories: {
+      dc: { label: 'DC', order: 0 }
+    }
+  },
+  semiconductors: {
+    label: 'Semiconductors',
+    order: 2,
+    subcategories: {
+      rectifier: { label: 'Rectifier', order: 0 },
+      transistor: { label: 'Transistors', order: 1 }
+    }
+  },
+  ics: {
+    label: 'ICs',
+    order: 3,
+    subcategories: {
+      'op-amps': { label: 'Op-Amps', order: 0 },
+      timers: { label: 'Timers', order: 1 },
+      'logic-74xx-hc-hct': { label: 'Logic (74xx/HC/HCT)', order: 2 },
+      'mcu-basics': { label: 'MCU basics', order: 3 }
+    }
+  },
+  relays: {
+    label: 'Relays',
+    order: 4,
+    subcategories: {
+      spst_spdt: { label: 'SPST/SPDT', order: 0 },
+      reed: { label: 'Reed', order: 1 },
+      'solid-state': { label: 'Solid-state', order: 2 }
+    }
+  },
+  power: {
+    label: 'Power',
+    order: 5,
+    subcategories: {
+      generic: { label: 'Generic', order: 0 }
+    }
+  },
+  sensors: {
+    label: 'Sensors',
+    order: 6,
+    subcategories: {
+      generic: { label: 'Generic', order: 0 }
+    }
+  },
+  specialty: {
+    label: 'Specialty',
+    order: 7,
+    subcategories: {
+      rf: { label: 'RF', order: 0 },
+      audio: { label: 'Audio', order: 1 },
+      'power-management': { label: 'Power-management', order: 2 },
+      hierarchy: { label: 'Hierarchy', order: 3 },
+      other: { label: 'Other', order: 4 }
+    }
+  }
+} as const;
 
 type LegacyComponentCatalogItem = Omit<
   ComponentCatalogItem,
@@ -114,7 +187,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic two-terminal resistor symbol.',
     tags: ['symbol', 'ohmic', 'generic'],
     pinCount: 2,
-    defaultProps: { resistanceOhms: 1000 }
+    defaultProps: { resistanceOhms: 1000 },
+    sidebar: { category: 'passive', subcategory: 'generic' }
   },
   {
     id: 'capacitor',
@@ -125,7 +199,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic capacitor symbol for charge storage.',
     tags: ['symbol', 'energy-storage', 'generic'],
     pinCount: 2,
-    defaultProps: { capacitanceFarads: 0.000001 }
+    defaultProps: { capacitanceFarads: 0.000001 },
+    sidebar: { category: 'passive', subcategory: 'generic' }
   },
   {
     id: 'inductor',
@@ -136,7 +211,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic inductor symbol for magnetic energy storage.',
     tags: ['symbol', 'magnetic', 'generic'],
     pinCount: 2,
-    defaultProps: { inductanceHenries: 0.001 }
+    defaultProps: { inductanceHenries: 0.001 },
+    sidebar: { category: 'passive', subcategory: 'generic' }
   },
   {
     id: 'voltage-source',
@@ -147,7 +223,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Ideal two-terminal voltage source.',
     tags: ['source', 'dc', 'generic'],
     pinCount: 2,
-    defaultProps: { voltageVolts: 5 }
+    defaultProps: { voltageVolts: 5 },
+    sidebar: { category: 'sources', subcategory: 'dc' }
   },
   {
     id: 'current-source',
@@ -158,7 +235,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Ideal two-terminal current source.',
     tags: ['source', 'bias', 'generic'],
     pinCount: 2,
-    defaultProps: { currentAmps: 0.001 }
+    defaultProps: { currentAmps: 0.001 },
+    sidebar: { category: 'sources', subcategory: 'dc' }
   },
   {
     id: 'diode',
@@ -169,7 +247,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic diode symbol with standard silicon defaults.',
     tags: ['pn-junction', 'generic', 'rectifier'],
     pinCount: 2,
-    defaultProps: { forwardDropVolts: 0.7 }
+    defaultProps: { forwardDropVolts: 0.7 },
+    sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
   },
   {
     id: 'bjt',
@@ -180,7 +259,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic NPN bipolar junction transistor symbol.',
     tags: ['transistor', 'generic', 'bipolar'],
     pinCount: 3,
-    defaultProps: { beta: 100 }
+    defaultProps: { beta: 100 },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
   {
     id: 'mosfet',
@@ -191,7 +271,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic enhancement-mode MOSFET symbol.',
     tags: ['transistor', 'generic', 'switch'],
     pinCount: 3,
-    defaultProps: { thresholdVoltageVolts: 2.5 }
+    defaultProps: { thresholdVoltageVolts: 2.5 },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
   {
     id: 'op-amp',
@@ -202,7 +283,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic operational amplifier macro model.',
     tags: ['ic', 'analog', 'generic'],
     pinCount: 5,
-    defaultProps: { openLoopGain: 100000 }
+    defaultProps: { openLoopGain: 100000 },
+    sidebar: { category: 'ics', subcategory: 'op-amps' }
   },
   {
     id: 'logic-gate',
@@ -213,7 +295,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic digital logic gate.',
     tags: ['ic', 'digital', 'generic'],
     pinCount: 3,
-    defaultProps: { family: 'CMOS', gateType: 'nand' }
+    defaultProps: { family: 'CMOS', gateType: 'nand' },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
   },
   {
     id: 'ne555',
@@ -227,7 +310,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     defaultProps: { mode: 'astable', frequencyHz: 1000 },
     partNumber: 'NE555',
     manufacturer: 'Texas Instruments',
-    datasheetUrl: 'https://example.com/datasheets/ne555.pdf'
+    datasheetUrl: 'https://example.com/datasheets/ne555.pdf',
+    sidebar: { category: 'ics', subcategory: 'timers' }
   },
   {
     id: 'lm358',
@@ -241,7 +325,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     defaultProps: { openLoopGain: 100000, channels: 2 },
     partNumber: 'LM358',
     manufacturer: 'STMicroelectronics',
-    datasheetUrl: 'https://example.com/datasheets/lm358.pdf'
+    datasheetUrl: 'https://example.com/datasheets/lm358.pdf',
+    sidebar: { category: 'ics', subcategory: 'op-amps' }
   },
   {
     id: '74hc00',
@@ -255,7 +340,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     defaultProps: { family: 'HC', gates: 4 },
     partNumber: '74HC00',
     manufacturer: 'Nexperia',
-    datasheetUrl: 'https://example.com/datasheets/74hc00.pdf'
+    datasheetUrl: 'https://example.com/datasheets/74hc00.pdf',
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
   },
   {
     id: 'ad9833',
@@ -269,7 +355,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     defaultProps: { maxFrequencyHz: 12500000 },
     partNumber: 'AD9833',
     manufacturer: 'Analog Devices',
-    datasheetUrl: 'https://example.com/datasheets/ad9833.pdf'
+    datasheetUrl: 'https://example.com/datasheets/ad9833.pdf',
+    sidebar: { category: 'specialty', subcategory: 'rf' }
   },
   {
     id: 'subcircuit',
@@ -280,7 +367,8 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Reusable grouped macro that encapsulates a section of a circuit.',
     tags: ['hierarchy', 'macro', 'module'],
     pinCount: 0,
-    defaultProps: { collapsed: true }
+    defaultProps: { collapsed: true },
+    sidebar: { category: 'specialty', subcategory: 'hierarchy' }
   }
 ];
 
@@ -320,6 +408,15 @@ export const validateComponentCatalog = (
 
     if (!validCategories.includes(item.category)) {
       errors.push(`Invalid category "${item.category}" on item "${item.id}"`);
+    }
+
+    if (item.sidebar) {
+      const sidebarCategory = SIDEBAR_GROUPING[item.sidebar.category as keyof typeof SIDEBAR_GROUPING];
+      if (!sidebarCategory) {
+        errors.push(`Invalid sidebar category "${item.sidebar.category}" on item "${item.id}"`);
+      } else if (!sidebarCategory.subcategories[item.sidebar.subcategory as keyof typeof sidebarCategory.subcategories]) {
+        errors.push(`Invalid sidebar subcategory "${item.sidebar.subcategory}" on item "${item.id}"`);
+      }
     }
 
     const isHighVolume = Boolean(item.partNumber);
