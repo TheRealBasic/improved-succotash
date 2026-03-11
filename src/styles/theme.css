@@ -1,0 +1,37 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: #0b1020;
+  color: #e4ecff;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  padding: 1.5rem;
+}
+
+.workspace {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2fr 1fr;
+}
+
+.panel {
+  border: 1px solid #2b3d7a;
+  background: rgba(22, 31, 65, 0.75);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.property-panel label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.property-panel input {
+  width: 100%;
+  margin-top: 0.25rem;
+}
