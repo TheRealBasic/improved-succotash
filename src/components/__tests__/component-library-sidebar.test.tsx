@@ -49,3 +49,61 @@ describe('ComponentLibrarySidebar', () => {
     expect(setData).toHaveBeenCalledWith('application/x-component-kind', 'resistor');
   });
 });
+
+
+describe('componentCatalog sidebar grouping', () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.doUnmock('../../data/componentCatalog');
+  });
+
+  it('groups mixed catalog categories using explicit sidebar metadata', async () => {
+    vi.resetModules();
+    const { COMPONENT_CATALOG } = await import('../componentCatalog');
+
+    const ics = COMPONENT_CATALOG.find((category) => category.id === 'ics');
+    expect(ics?.subcategories.map((subcategory) => subcategory.label)).toEqual(['Op-Amps', 'Timers', 'Logic (74xx/HC/HCT)']);
+
+    const timers = ics?.subcategories.find((subcategory) => subcategory.id === 'ics::timers');
+    expect(timers?.entries.some((entry) => entry.id === 'ne555')).toBe(true);
+
+    const logic = ics?.subcategories.find((subcategory) => subcategory.id === 'ics::logic-74xx-hc-hct');
+    expect(logic?.entries.map((entry) => entry.id)).toContain('74hc00');
+
+    const specialty = COMPONENT_CATALOG.find((category) => category.id === 'specialty');
+    const rf = specialty?.subcategories.find((subcategory) => subcategory.id === 'specialty::rf');
+    expect(rf?.entries.map((entry) => entry.id)).toContain('ad9833');
+  });
+
+  it('falls back to legacy sidebar heuristics when sidebar metadata is missing', async () => {
+    vi.doMock('../../data/componentCatalog', async () => {
+      const actual = await vi.importActual<typeof import('../../data/componentCatalog')>('../../data/componentCatalog');
+      return {
+        ...actual,
+        SORTED_COMPONENT_CATALOG_ITEMS: [
+          {
+            id: 'legacy-timer',
+            displayName: 'Legacy Timer',
+            kind: 'op-amp',
+            category: 'timing',
+            subcategory: 'timer',
+            description: 'legacy item',
+            tags: ['timer'],
+            pinCount: 8,
+            symbolVariant: 'generic',
+            pins: [],
+            editablePropertySchema: {},
+            solverBehavior: { model: 'op-amp' },
+            defaultProps: {}
+          }
+        ]
+      };
+    });
+
+    const { COMPONENT_CATALOG } = await import('../componentCatalog');
+    expect(COMPONENT_CATALOG).toHaveLength(1);
+    expect(COMPONENT_CATALOG[0]?.id).toBe('ics');
+    expect(COMPONENT_CATALOG[0]?.subcategories[0]?.id).toBe('ics::timers');
+    expect(COMPONENT_CATALOG[0]?.subcategories[0]?.entries[0]?.id).toBe('legacy-timer');
+  });
+});

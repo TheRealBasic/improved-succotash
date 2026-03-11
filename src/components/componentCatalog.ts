@@ -1,4 +1,5 @@
 import {
+  SIDEBAR_GROUPING,
   SORTED_COMPONENT_CATALOG_ITEMS,
   type CatalogPlacementKind,
   type ComponentCatalogItem
@@ -26,39 +27,7 @@ export type ComponentCatalogCategory = {
   subcategories: ComponentCatalogSubcategory[];
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  passive: 'Passive',
-  sources: 'Sources',
-  semiconductors: 'Semiconductors',
-  ics: 'ICs',
-  relays: 'Relays',
-  power: 'Power',
-  sensors: 'Sensors',
-  specialty: 'Specialty'
-};
-
-const SUBCATEGORY_LABELS: Record<string, string> = {
-  generic: 'Generic',
-  dc: 'DC',
-  rectifier: 'Rectifier',
-  transistor: 'Transistors',
-  'op-amps': 'Op-Amps',
-  timers: 'Timers',
-  'logic-74xx-hc-hct': 'Logic (74xx/HC/HCT)',
-  'mcu-basics': 'MCU basics',
-  spst_spdt: 'SPST/SPDT',
-  reed: 'Reed',
-  'solid-state': 'Solid-state',
-  rf: 'RF',
-  audio: 'Audio',
-  'power-management': 'Power-management',
-  hierarchy: 'Hierarchy',
-  other: 'Other'
-};
-
-const CATEGORY_ORDER = ['passive', 'sources', 'semiconductors', 'ics', 'relays', 'power', 'sensors', 'specialty'] as const;
-
-const resolveSidebarPath = (item: ComponentCatalogItem): { categoryId: string; subcategoryId: string } => {
+const resolveLegacySidebarPath = (item: ComponentCatalogItem): { categoryId: string; subcategoryId: string } => {
   if (item.tags.includes('timer')) {
     return { categoryId: 'ics', subcategoryId: 'timers' };
   }
@@ -86,6 +55,17 @@ const resolveSidebarPath = (item: ComponentCatalogItem): { categoryId: string; s
   return { categoryId: item.category, subcategoryId: item.subcategory || 'other' };
 };
 
+const resolveSidebarPath = (item: ComponentCatalogItem): { categoryId: string; subcategoryId: string } => {
+  if (item.sidebar) {
+    return {
+      categoryId: item.sidebar.category,
+      subcategoryId: item.sidebar.subcategory
+    };
+  }
+
+  return resolveLegacySidebarPath(item);
+};
+
 const ENTRY_METADATA: Record<string, { aliases: string[]; shortcutId?: string }> = {
   resistor: { aliases: ['R'], shortcutId: 'place-resistor' },
   capacitor: { aliases: ['C'], shortcutId: 'place-capacitor' },
@@ -100,10 +80,19 @@ const ENTRY_METADATA: Record<string, { aliases: string[]; shortcutId?: string }>
   subcircuit: { aliases: ['Macro'], shortcutId: 'place-subcircuit' }
 };
 
-const orderForCategory = (id: string): number => {
-  const index = CATEGORY_ORDER.indexOf(id as (typeof CATEGORY_ORDER)[number]);
-  return index === -1 ? CATEGORY_ORDER.length : index;
-};
+type SidebarGroupingMap = Record<string, { label: string; order: number; subcategories: Record<string, { label: string; order: number }> }>;
+
+const SIDEBAR_GROUPING_MAP = SIDEBAR_GROUPING as SidebarGroupingMap;
+
+const categoryOrder = (id: string): number => SIDEBAR_GROUPING_MAP[id]?.order ?? Number.MAX_SAFE_INTEGER;
+
+const subcategoryOrder = (categoryId: string, subcategoryId: string): number =>
+  SIDEBAR_GROUPING_MAP[categoryId]?.subcategories[subcategoryId]?.order ?? Number.MAX_SAFE_INTEGER;
+
+const categoryLabel = (id: string): string => SIDEBAR_GROUPING_MAP[id]?.label ?? id;
+
+const subcategoryLabel = (categoryId: string, subcategoryId: string): string =>
+  SIDEBAR_GROUPING_MAP[categoryId]?.subcategories[subcategoryId]?.label ?? subcategoryId;
 
 export const COMPONENT_CATALOG: ComponentCatalogCategory[] = Object.entries(
   SORTED_COMPONENT_CATALOG_ITEMS.reduce<Record<string, Record<string, ComponentCatalogEntry[]>>>((grouped, item) => {
@@ -123,15 +112,19 @@ export const COMPONENT_CATALOG: ComponentCatalogCategory[] = Object.entries(
     return grouped;
   }, {})
 )
-  .sort(([left], [right]) => orderForCategory(left) - orderForCategory(right))
+  .sort(([left], [right]) => categoryOrder(left) - categoryOrder(right) || left.localeCompare(right))
   .map(([id, subcategoryMap]) => ({
     id,
-    label: CATEGORY_LABELS[id] ?? id,
+    label: categoryLabel(id),
     subcategories: Object.entries(subcategoryMap)
-      .sort(([left], [right]) => (SUBCATEGORY_LABELS[left] ?? left).localeCompare(SUBCATEGORY_LABELS[right] ?? right))
+      .sort(
+        ([left], [right]) =>
+          subcategoryOrder(id, left) - subcategoryOrder(id, right) ||
+          subcategoryLabel(id, left).localeCompare(subcategoryLabel(id, right))
+      )
       .map(([subcategoryId, entries]) => ({
         id: `${id}::${subcategoryId}`,
-        label: SUBCATEGORY_LABELS[subcategoryId] ?? subcategoryId,
+        label: subcategoryLabel(id, subcategoryId),
         entries
       }))
   }));
