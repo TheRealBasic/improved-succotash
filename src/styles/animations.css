@@ -6,3 +6,100 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
+
+.anim-entering {
+  animation: item-enter 220ms ease both;
+}
+
+.anim-exiting {
+  animation: item-exit 200ms ease both;
+  pointer-events: none;
+}
+
+.component-line {
+  transition: stroke 160ms ease, stroke-width 160ms ease, opacity 180ms ease;
+}
+
+.wire-line {
+  stroke-dasharray: 10 7;
+  animation: wire-flow 900ms linear infinite;
+}
+
+.signal-preview {
+  stroke-dasharray: 7 5;
+  animation: wire-flow 700ms linear infinite;
+}
+
+.node-dot {
+  transition: r 140ms ease, fill 140ms ease;
+}
+
+.property-panel .field-group {
+  overflow: hidden;
+  transform-origin: top;
+  transition: opacity 180ms ease, transform 180ms ease, max-height 180ms ease;
+  max-height: 280px;
+  opacity: 1;
+}
+
+.property-panel .field-group.collapsed {
+  opacity: 0;
+  transform: scaleY(0.96);
+  max-height: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+.value-updated {
+  animation: value-pulse 650ms ease;
+}
+
+@keyframes item-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.93);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes item-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes wire-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -34;
+  }
+}
+
+@keyframes value-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(127, 194, 255, 0.65);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(127, 194, 255, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(127, 194, 255, 0);
+  }
+}
