@@ -1,10 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CircuitCanvas, type CanvasComponent } from './components/CircuitCanvas';
 import { EquationBreakdownPanel } from './components/EquationBreakdownPanel';
 import { PropertyPanel } from './components/PropertyPanel';
 import { SHORTCUTS, isTextInputLike, shortcutLabel } from './components/shortcuts';
-import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
+import {
+  getSfxSettings,
+  isSfxBlocked,
+  playSfx,
+  setSfxAccessibilityMode,
+  setSfxIntensity,
+  setSfxThemeProfile,
+  setSfxVolume,
+  subscribeToSfxSettings,
+  toggleSfxMute,
+  unlockSfx
+} from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
 import type { CircuitComponent, ComponentKind, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
 import { runAnalysis, simulateStep } from './engine/simulation';
@@ -92,6 +103,8 @@ const App = () => {
   const [focusedEquationRowId, setFocusedEquationRowId] = useState<string | undefined>(undefined);
   const [rerouteWiresOnMove, setRerouteWiresOnMove] = useState(true);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [analysisState, setAnalysisState] = useState<'idle' | 'running' | 'converged' | 'warning' | 'error'>('idle');
+  const previousAnalysisState = useRef<'idle' | 'running' | 'converged' | 'warning' | 'error'>('idle');
 
   const selectedComponent = useMemo(
     () => circuit.components.find((component) => component.id === selectedComponentId),
@@ -140,23 +153,54 @@ const App = () => {
   useEffect(() => subscribeToSfxSettings(setSfxSettings), []);
 
   useEffect(() => {
+    setAnalysisState('running');
     const timer = window.setTimeout(() => {
-      setSolved(
-        runAnalysis({
-          nodes: circuit.nodes.map((node) => ({
-            id: node.id,
-            reference: node.reference,
-            voltage: node.reference ? { value: 0, known: true, computed: false, unit: 'V' } : undefined
-          })),
-          components: circuit.components
-        }).result
-      );
+      const analysisResult = runAnalysis({
+        nodes: circuit.nodes.map((node) => ({
+          id: node.id,
+          reference: node.reference,
+          voltage: node.reference ? { value: 0, known: true, computed: false, unit: 'V' } : undefined
+        })),
+        components: circuit.components
+      }).result;
+
+      setSolved(analysisResult);
+
+      const hasErrors = analysisResult.diagnostics.some((diagnostic) => diagnostic.severity === 'error');
+      const hasWarnings = analysisResult.diagnostics.some((diagnostic) => diagnostic.severity === 'warning');
+      if (hasErrors) {
+        setAnalysisState('error');
+      } else if (hasWarnings) {
+        setAnalysisState('warning');
+      } else {
+        setAnalysisState('converged');
+      }
     }, 140);
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(circuit));
 
     return () => window.clearTimeout(timer);
   }, [circuit]);
+
+
+  useEffect(() => {
+    const previous = previousAnalysisState.current;
+    if (analysisState !== previous) {
+      if (analysisState === 'running') {
+        playSfx('start');
+      }
+      if (analysisState === 'converged') {
+        playSfx('converge');
+      }
+      if (analysisState === 'warning') {
+        playSfx('warning');
+      }
+      if (analysisState === 'error') {
+        playSfx('error');
+      }
+      previousAnalysisState.current = analysisState;
+    }
+  }, [analysisState]);
 
   useEffect(() => {
     if (!simulationActive) {
@@ -620,6 +664,25 @@ const App = () => {
           SFX Volume: {Math.round(sfxSettings.volume * 100)}%
           <input type="range" min={0} max={100} value={Math.round(sfxSettings.volume * 100)} onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
         </label>
+        <label>
+          SFX Theme
+          <select value={sfxSettings.themeProfile} onChange={(event) => setSfxThemeProfile(event.target.value as 'classic' | 'soft' | 'bright')}>
+            <option value="classic">Classic</option>
+            <option value="soft">Soft</option>
+            <option value="bright">Bright</option>
+          </select>
+        </label>
+        <label>
+          SFX Intensity
+          <select value={sfxSettings.intensity} onChange={(event) => setSfxIntensity(event.target.value as 'relaxed' | 'balanced' | 'high')}>
+            <option value="relaxed">Relaxed</option>
+            <option value="balanced">Balanced</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <button type="button" onClick={() => setSfxAccessibilityMode(sfxSettings.accessibilityMode === 'all' ? 'alertsOnly' : 'all')}>
+          {sfxSettings.accessibilityMode === 'alertsOnly' ? 'Accessibility: Alerts only' : 'Accessibility: All cues'}
+        </button>
         <button type="button" onClick={toggleSfxMute}>
           {sfxSettings.muted ? 'Unmute SFX' : 'Mute SFX'}
         </button>
