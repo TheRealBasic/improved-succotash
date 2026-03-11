@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { solveCircuit, solveCircuitForTarget } from '../solver';
+import { getDiagnosticGuidance, solveCircuit, solveCircuitForTarget } from '../solver';
 import { simulateStep } from '../simulation';
 import type { CircuitState } from '../model';
 
@@ -121,6 +121,63 @@ describe('solveCircuit diagnostics', () => {
     const result = solveCircuit(circuit);
 
     expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'overdetermined')).toBe(true);
+  });
+
+
+  it('reports missing constitutive value for active/reactive part', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'l1',
+          kind: 'inductor',
+          from: 'n1',
+          to: 'gnd',
+          inductance: { known: true, computed: false, unit: 'H' }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit);
+
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'missing_constitutive_value')).toBe(true);
+  });
+
+  it('emits floating node group hint when graph is disconnected', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }, { id: 'n2' }, { id: 'n3' }],
+      components: [
+        {
+          id: 'r1',
+          kind: 'resistor',
+          from: 'n1',
+          to: 'gnd',
+          resistance: { value: 10, known: true, computed: false, unit: 'Ω' }
+        },
+        {
+          id: 'r2',
+          kind: 'resistor',
+          from: 'n2',
+          to: 'n3',
+          resistance: { value: 5, known: true, computed: false, unit: 'Ω' }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit);
+
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'floating_node_groups')).toBe(true);
+  });
+
+  it('maps structural diagnostic to user action guidance', () => {
+    const guidance = getDiagnosticGuidance({
+      code: 'underdetermined',
+      severity: 'error',
+      message: 'x'
+    });
+
+    expect(guidance?.why).toMatch(/fewer independent equations/i);
+    expect(guidance?.suggestedFix).toMatch(/add grounding/i);
   });
 
   it('reports invalid units and value constraint violations', () => {

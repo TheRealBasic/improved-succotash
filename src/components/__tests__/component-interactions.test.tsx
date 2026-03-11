@@ -131,5 +131,7 @@ describe('PropertyPanel updates and rendering', () => {
 
     expect(screen.getByText(/current: 0.2500 A/i)).toBeTruthy();
     expect(screen.getByText(/\[error\] Circuit equations are underdetermined/i)).toBeTruthy();
+    expect(screen.getByText(/why:/i)).toBeTruthy();
+    expect(screen.getByText(/suggested fix:/i)).toBeTruthy();
   });
 });
