@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type DragEvent, type PointerEvent } from 'react';
-import type { ComponentKind } from '../engine/model';
+import type { ComponentCatalogTypeId, ComponentKind } from '../engine/model';
 import { ANIMATION_CLASS, ANIMATION_MS } from '../styles/animations';
 
 export type CanvasNodePosition = {
@@ -13,6 +13,7 @@ export type CanvasNodePosition = {
 export type CanvasComponent = {
   id: string;
   kind: ComponentKind;
+  catalogTypeId: ComponentCatalogTypeId;
   from: string;
   to: string;
   label?: string;
@@ -32,7 +33,7 @@ type CircuitCanvasProps = {
   pendingWireFromNodeId?: string;
   simulationActive: boolean;
   rerouteWiresOnMove: boolean;
-  onAddComponentAt: (kind: Exclude<ComponentKind, 'wire'>, x: number, y: number) => void;
+  onAddComponentAt: (catalogTypeId: ComponentCatalogTypeId, x: number, y: number) => void;
   onAddSubcircuitAt: (x: number, y: number) => void;
   onSelectNode: (nodeId: string) => void;
   onSelectComponent: (componentId: string) => void;
@@ -120,19 +121,19 @@ const buildOrthogonalRoute = (start: Point, end: Point, blocked: Rect[]): Point[
 const renderComponentSymbol = (component: CanvasComponent, fromNode: CanvasNodePosition, toNode: CanvasNodePosition) => {
   const midX = (fromNode.x + toNode.x) / 2;
   const midY = (fromNode.y + toNode.y) / 2;
-  if (component.kind === 'diode') {
+  if (component.catalogTypeId === 'diode') {
     return <>
       <polygon points={`${midX - 10},${midY - 10} ${midX - 10},${midY + 10} ${midX + 4},${midY}`} fill="none" stroke="#ffd36d" strokeWidth={2} />
       <line x1={midX + 6} y1={midY - 10} x2={midX + 6} y2={midY + 10} stroke="#ffd36d" strokeWidth={2} />
     </>;
   }
-  if (component.kind === 'opAmp') {
+  if (component.catalogTypeId === 'op-amp') {
     return <polygon points={`${midX - 12},${midY - 14} ${midX - 12},${midY + 14} ${midX + 14},${midY}`} fill="none" stroke="#9ae6ff" strokeWidth={2} />;
   }
-  if (component.kind === 'logicGate') {
+  if (component.catalogTypeId === 'logic-gate') {
     return <rect x={midX - 12} y={midY - 10} width={24} height={20} fill="none" stroke="#9dffcc" strokeWidth={2} rx={4} />;
   }
-  if (component.kind === 'bjt' || component.kind === 'mosfet') {
+  if (component.catalogTypeId === 'bjt' || component.catalogTypeId === 'mosfet') {
     return <circle cx={midX} cy={midY} r={10} fill="none" stroke="#ffb4f3" strokeWidth={2} />;
   }
   return null;
@@ -236,7 +237,7 @@ export const CircuitCanvas = ({
   const blockedRects = useMemo(
     () =>
       renderedComponents
-        .filter((component) => component.kind !== 'wire')
+        .filter((component) => component.catalogTypeId !== 'wire')
         .map((component) => {
           const from = nodeById.get(component.from);
           const to = nodeById.get(component.to);
@@ -261,7 +262,7 @@ export const CircuitCanvas = ({
         }}
         onDrop={(event) => {
           event.preventDefault();
-          const kind = event.dataTransfer.getData('application/x-component-kind') as Exclude<ComponentKind, 'wire'> | 'subcircuit';
+          const kind = event.dataTransfer.getData('application/x-component-kind') as ComponentCatalogTypeId | 'subcircuit';
           if (!kind) {
             return;
           }
@@ -308,7 +309,7 @@ export const CircuitCanvas = ({
 
           const isSelected = component.id === selectedComponentId;
           const animationClass = component.status === 'entering' ? ANIMATION_CLASS.entering : component.status === 'exiting' ? ANIMATION_CLASS.exiting : '';
-          const route = component.kind === 'wire' && rerouteWiresOnMove
+          const route = component.catalogTypeId === 'wire' && rerouteWiresOnMove
             ? buildOrthogonalRoute({ x: fromNode.x, y: fromNode.y }, { x: toNode.x, y: toNode.y }, blockedRects)
             : [{ x: fromNode.x, y: fromNode.y }, { x: toNode.x, y: toNode.y }];
 
@@ -317,8 +318,8 @@ export const CircuitCanvas = ({
               <polyline
                 points={route.map((point) => `${point.x},${point.y}`).join(' ')}
                 fill="none"
-                className={`component-line ${component.kind === 'wire' && simulationActive ? 'wire-line' : ''}`}
-                stroke={isSelected ? '#8fc7ff' : component.kind === 'wire' ? '#8ef7b8' : '#d4dbff'}
+                className={`component-line ${component.catalogTypeId === 'wire' && simulationActive ? 'wire-line' : ''}`}
+                stroke={isSelected ? '#8fc7ff' : component.catalogTypeId === 'wire' ? '#8ef7b8' : '#d4dbff'}
                 strokeWidth={isSelected ? 5 : 3}
                 onClick={() => onSelectComponent(component.id)}
               />
@@ -330,7 +331,7 @@ export const CircuitCanvas = ({
                 fill="#dce5ff"
                 className="component-label"
               >
-                {component.label ?? component.kind}
+                {component.label ?? component.catalogTypeId}
               </text>
             </g>
           );

@@ -7,21 +7,24 @@ const rcLowPassCircuit: CircuitState = {
   components: [
     {
       id: 'vs',
-      kind: 'voltageSource',
+      kind: 'source2p',
+        catalogTypeId: 'voltage-source',
       from: 'vin',
       to: 'gnd',
       voltage: { value: 1, known: true, computed: false, unit: 'V' }
     },
     {
       id: 'r1',
-      kind: 'resistor',
+      kind: 'passive2p',
+        catalogTypeId: 'resistor',
       from: 'vin',
       to: 'vout',
       resistance: { value: 1000, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
     },
     {
       id: 'c1',
-      kind: 'capacitor',
+      kind: 'passive2p',
+        catalogTypeId: 'capacitor',
       from: 'vout',
       to: 'gnd',
       capacitance: { value: 1e-6, known: true, computed: false, unit: 'F' }

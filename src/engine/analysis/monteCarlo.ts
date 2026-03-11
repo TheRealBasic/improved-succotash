@@ -48,37 +48,37 @@ const cloneCircuit = (circuit: CircuitState): CircuitState => ({
     voltage: node.voltage ? { ...node.voltage, constraints: node.voltage.constraints ? { ...node.voltage.constraints } : undefined } : undefined
   })),
   components: circuit.components.map((component) => {
-    if (component.kind === 'wire') {
+    if (component.catalogTypeId === 'wire') {
       return component;
     }
-    if (component.kind === 'resistor') {
+    if (component.catalogTypeId === 'resistor') {
       return { ...component, resistance: { ...component.resistance, constraints: component.resistance.constraints ? { ...component.resistance.constraints } : undefined } };
     }
-    if (component.kind === 'capacitor') {
+    if (component.catalogTypeId === 'capacitor') {
       return { ...component, capacitance: { ...component.capacitance, constraints: component.capacitance.constraints ? { ...component.capacitance.constraints } : undefined } };
     }
-    if (component.kind === 'inductor') {
+    if (component.catalogTypeId === 'inductor') {
       return { ...component, inductance: { ...component.inductance, constraints: component.inductance.constraints ? { ...component.inductance.constraints } : undefined } };
     }
-    if (component.kind === 'voltageSource') {
+    if (component.catalogTypeId === 'voltage-source') {
       return { ...component, voltage: { ...component.voltage, constraints: component.voltage.constraints ? { ...component.voltage.constraints } : undefined } };
     }
-    if (component.kind === 'currentSource') {
+    if (component.catalogTypeId === 'current-source') {
       return { ...component, current: { ...component.current, constraints: component.current.constraints ? { ...component.current.constraints } : undefined } };
     }
-    if (component.kind === 'diode') {
+    if (component.catalogTypeId === 'diode') {
       return { ...component, forwardDrop: { ...component.forwardDrop }, onResistance: { ...component.onResistance }, offResistance: { ...component.offResistance } };
     }
-    if (component.kind === 'bjt') {
+    if (component.catalogTypeId === 'bjt') {
       return { ...component, beta: { ...component.beta }, vbeOn: { ...component.vbeOn } };
     }
-    if (component.kind === 'mosfet') {
+    if (component.catalogTypeId === 'mosfet') {
       return { ...component, thresholdVoltage: { ...component.thresholdVoltage }, onResistance: { ...component.onResistance } };
     }
-    if (component.kind === 'opAmp') {
+    if (component.catalogTypeId === 'op-amp') {
       return { ...component, gain: { ...component.gain }, outputLimitHigh: { ...component.outputLimitHigh }, outputLimitLow: { ...component.outputLimitLow } };
     }
-    if (component.kind === 'logicGate') {
+    if (component.catalogTypeId === 'logic-gate') {
       return { ...component, bridge: { highThreshold: { ...component.bridge.highThreshold }, lowThreshold: { ...component.bridge.lowThreshold }, highLevel: { ...component.bridge.highLevel }, lowLevel: { ...component.bridge.lowLevel } } };
     }
     return component;
@@ -105,16 +105,16 @@ const collectMetadataRefs = (circuit: CircuitState): MetadataRef[] => {
 };
 
 const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata | undefined => {
-  switch (component.kind) {
+  switch (component.catalogTypeId) {
     case 'resistor':
       return component.resistance;
     case 'capacitor':
       return component.capacitance;
     case 'inductor':
       return component.inductance;
-    case 'voltageSource':
+    case 'voltage-source':
       return component.voltage;
-    case 'currentSource':
+    case 'current-source':
       return component.current;
     case 'diode':
       return component.forwardDrop;
@@ -122,9 +122,9 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
       return component.beta;
     case 'mosfet':
       return component.thresholdVoltage;
-    case 'opAmp':
+    case 'op-amp':
       return component.gain;
-    case 'logicGate':
+    case 'logic-gate':
       return component.bridge.highThreshold;
     default:
       return undefined;

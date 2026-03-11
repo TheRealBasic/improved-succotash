@@ -18,7 +18,7 @@ import {
   unlockSfx
 } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
-import type { CircuitComponent, ComponentKind, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
+import type { CircuitComponent, ComponentCatalogTypeId, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
 import { runAnalysis, simulateStep } from './engine/simulation';
 import { solveCircuitForTarget, solveCircuitValues } from './engine/solver';
 import './styles/theme.css';
@@ -35,28 +35,30 @@ const createValueMetadata = (unit: Unit, value: number, constraints?: ValueMetad
   constraints
 });
 
-const componentFactory = (kind: Exclude<ComponentKind, 'wire'>, id: string, from: string, to: string): CircuitComponent => {
-  switch (kind) {
+const componentFactory = (catalogTypeId: ComponentCatalogTypeId, id: string, from: string, to: string): CircuitComponent => {
+  switch (catalogTypeId) {
     case 'resistor':
-      return { id, kind, from, to, label: `R-${id}`, resistance: createValueMetadata('Ω', 100, { min: 0.001, nonZero: true }) };
+      return { id, kind: 'passive2p', catalogTypeId, from, to, label: `R-${id}`, resistance: createValueMetadata('Ω', 100, { min: 0.001, nonZero: true }) };
     case 'capacitor':
-      return { id, kind, from, to, label: `C-${id}`, capacitance: createValueMetadata('F', 0.000001, { min: 0 }) };
+      return { id, kind: 'passive2p', catalogTypeId, from, to, label: `C-${id}`, capacitance: createValueMetadata('F', 0.000001, { min: 0 }) };
     case 'inductor':
-      return { id, kind, from, to, label: `L-${id}`, inductance: createValueMetadata('H', 0.01, { min: 0 }) };
-    case 'voltageSource':
-      return { id, kind, from, to, label: `V-${id}`, voltage: createValueMetadata('V', 5, { nonZero: true }) };
-    case 'currentSource':
-      return { id, kind, from, to, label: `I-${id}`, current: createValueMetadata('A', 0.01), nonIdeal: { internalResistance: createValueMetadata('Ω', 0), rippleAmplitude: createValueMetadata('A', 0), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 0) } };
+      return { id, kind: 'passive2p', catalogTypeId, from, to, label: `L-${id}`, inductance: createValueMetadata('H', 0.01, { min: 0 }) };
+    case 'voltage-source':
+      return { id, kind: 'source2p', catalogTypeId, from, to, label: `V-${id}`, voltage: createValueMetadata('V', 5, { nonZero: true }) };
+    case 'current-source':
+      return { id, kind: 'source2p', catalogTypeId, from, to, label: `I-${id}`, current: createValueMetadata('A', 0.01), nonIdeal: { internalResistance: createValueMetadata('Ω', 0), rippleAmplitude: createValueMetadata('A', 0), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 0) } };
     case 'diode':
-      return { id, kind, from, to, label: `D-${id}`, forwardDrop: createValueMetadata('V', 0.7), onResistance: createValueMetadata('Ω', 10, { min: 0.001, nonZero: true }), offResistance: createValueMetadata('Ω', 1_000_000, { min: 1 }) };
+      return { id, kind: 'switch', catalogTypeId, from, to, label: `D-${id}`, forwardDrop: createValueMetadata('V', 0.7), onResistance: createValueMetadata('Ω', 10, { min: 0.001, nonZero: true }), offResistance: createValueMetadata('Ω', 1_000_000, { min: 1 }) };
     case 'bjt':
-      return { id, kind, from, to, label: `Q-${id}`, beta: createValueMetadata('A', 100), vbeOn: createValueMetadata('V', 0.7) };
+      return { id, kind: 'switch', catalogTypeId, from, to, label: `Q-${id}`, beta: createValueMetadata('A', 100), vbeOn: createValueMetadata('V', 0.7) };
     case 'mosfet':
-      return { id, kind, from, to, label: `M-${id}`, thresholdVoltage: createValueMetadata('V', 2), onResistance: createValueMetadata('Ω', 5, { min: 0.001, nonZero: true }) };
-    case 'opAmp':
-      return { id, kind, from, to, label: `U-${id}`, gain: createValueMetadata('V', 100000), outputLimitHigh: createValueMetadata('V', 12), outputLimitLow: createValueMetadata('V', -12) };
-    case 'logicGate':
-      return { id, kind, from, to, label: `G-${id}`, gateType: 'not', bridge: { highThreshold: createValueMetadata('V', 3), lowThreshold: createValueMetadata('V', 1), highLevel: createValueMetadata('V', 5), lowLevel: createValueMetadata('V', 0) } };
+      return { id, kind: 'switch', catalogTypeId, from, to, label: `M-${id}`, thresholdVoltage: createValueMetadata('V', 2), onResistance: createValueMetadata('Ω', 5, { min: 0.001, nonZero: true }) };
+    case 'op-amp':
+      return { id, kind: 'amplifier', catalogTypeId, from, to, label: `U-${id}`, gain: createValueMetadata('V', 100000), outputLimitHigh: createValueMetadata('V', 12), outputLimitLow: createValueMetadata('V', -12) };
+    case 'logic-gate':
+      return { id, kind: 'digital', catalogTypeId, from, to, label: `G-${id}`, gateType: 'not', bridge: { highThreshold: createValueMetadata('V', 3), lowThreshold: createValueMetadata('V', 1), highLevel: createValueMetadata('V', 5), lowLevel: createValueMetadata('V', 0) } };
+    case 'wire':
+      return { id, kind: 'passive2p', catalogTypeId, from, to, label: 'wire' };
   }
 };
 
@@ -253,13 +255,13 @@ const App = () => {
         if (key === 'r') addComponentAt('resistor', 380, 260);
         if (key === 'c') addComponentAt('capacitor', 380, 260);
         if (key === 'l') addComponentAt('inductor', 380, 260);
-        if (key === 'v') addComponentAt('voltageSource', 380, 260);
-        if (key === 'i') addComponentAt('currentSource', 380, 260);
+        if (key === 'v') addComponentAt('voltage-source', 380, 260);
+        if (key === 'i') addComponentAt('current-source', 380, 260);
         if (key === 'o') addComponentAt('diode', 380, 260);
         if (key === 'b') addComponentAt('bjt', 380, 260);
         if (key === 'm') addComponentAt('mosfet', 380, 260);
-        if (key === 'p') addComponentAt('opAmp', 380, 260);
-        if (key === 't') addComponentAt('logicGate', 380, 260);
+        if (key === 'p') addComponentAt('op-amp', 380, 260);
+        if (key === 't') addComponentAt('logic-gate', 380, 260);
         if (key === 's') addSubcircuitAt(380, 260);
         if (key === 'w' && selectedNodeId) startOrCompleteWire(selectedNodeId);
         if (key === 'd') duplicateSelected();
@@ -314,9 +316,9 @@ const App = () => {
     unlockSfx().finally(() => setAudioBlocked(isSfxBlocked()));
   };
 
-  const addComponentAt = (kind: Exclude<ComponentKind, 'wire'>, x: number, y: number) => {
+  const addComponentAt = (catalogTypeId: ComponentCatalogTypeId, x: number, y: number) => {
     applyCircuitUpdate((current) => {
-      const baseId = `${kind}-${Date.now()}`;
+      const baseId = `${catalogTypeId}-${Date.now()}`;
       const fromNodeId = `${baseId}-from`;
       const toNodeId = `${baseId}-to`;
       return {
@@ -326,9 +328,9 @@ const App = () => {
           { id: fromNodeId, x: x - 40, y },
           { id: toNodeId, x: x + 40, y }
         ],
-        components: [...current.components, componentFactory(kind, baseId, fromNodeId, toNodeId)]
+        components: [...current.components, componentFactory(catalogTypeId, baseId, fromNodeId, toNodeId)]
       };
-    }, `Place ${kind}`);
+    }, `Place ${catalogTypeId}`);
     playSfx('place');
   };
 
@@ -386,7 +388,7 @@ const App = () => {
         ...current.components,
         {
           id: `wire-${Date.now()}`,
-          kind: 'wire',
+          kind: 'passive2p', catalogTypeId: 'wire',
           from: pendingWireFromNodeId,
           to: nodeId,
           label: 'wire'
@@ -410,7 +412,7 @@ const App = () => {
       const rightNodeId = `${instanceId}-out`;
       const component: CircuitComponent = {
         id: instanceId,
-        kind: 'wire',
+        kind: 'passive2p', catalogTypeId: 'wire',
         from: leftNodeId,
         to: rightNodeId,
         label: template.label,
@@ -542,43 +544,43 @@ const App = () => {
           return component;
         }
 
-        if (valueKey === 'resistance' && component.kind === 'resistor') {
+        if (valueKey === 'resistance' && component.catalogTypeId === 'resistor') {
           return { ...component, resistance: { ...component.resistance, value } };
         }
-        if (valueKey === 'capacitance' && component.kind === 'capacitor') {
+        if (valueKey === 'capacitance' && component.catalogTypeId === 'capacitor') {
           return { ...component, capacitance: { ...component.capacitance, value } };
         }
-        if (valueKey === 'inductance' && component.kind === 'inductor') {
+        if (valueKey === 'inductance' && component.catalogTypeId === 'inductor') {
           return { ...component, inductance: { ...component.inductance, value } };
         }
-        if (valueKey === 'voltage' && component.kind === 'voltageSource') {
+        if (valueKey === 'voltage' && component.catalogTypeId === 'voltage-source') {
           return { ...component, voltage: { ...component.voltage, value } };
         }
-        if (valueKey === 'current' && component.kind === 'currentSource') {
+        if (valueKey === 'current' && component.catalogTypeId === 'current-source') {
           return { ...component, current: { ...component.current, value } };
         }
-        if (valueKey === 'internalResistance' && (component.kind === 'currentSource' || component.kind === 'voltageSource')) {
+        if (valueKey === 'internalResistance' && (component.catalogTypeId === 'current-source' || component.catalogTypeId === 'voltage-source')) {
           return { ...component, nonIdeal: { ...component.nonIdeal, internalResistance: { ...(component.nonIdeal?.internalResistance ?? createValueMetadata('Ω', 0)), value } } };
         }
-        if (valueKey === 'rippleAmplitude' && component.kind === 'voltageSource') {
+        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'voltage-source') {
           return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('V', 0)), value } } };
         }
-        if (valueKey === 'rippleAmplitude' && component.kind === 'currentSource') {
+        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'current-source') {
           return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('A', 0)), value } } };
         }
-        if (valueKey === 'forwardDrop' && component.kind === 'diode') {
+        if (valueKey === 'forwardDrop' && component.catalogTypeId === 'diode') {
           return { ...component, forwardDrop: { ...component.forwardDrop, value } };
         }
-        if (valueKey === 'beta' && component.kind === 'bjt') {
+        if (valueKey === 'beta' && component.catalogTypeId === 'bjt') {
           return { ...component, beta: { ...component.beta, value } };
         }
-        if (valueKey === 'thresholdVoltage' && component.kind === 'mosfet') {
+        if (valueKey === 'thresholdVoltage' && component.catalogTypeId === 'mosfet') {
           return { ...component, thresholdVoltage: { ...component.thresholdVoltage, value } };
         }
-        if (valueKey === 'gain' && component.kind === 'opAmp') {
+        if (valueKey === 'gain' && component.catalogTypeId === 'op-amp') {
           return { ...component, gain: { ...component.gain, value } };
         }
-        if (valueKey === 'highThreshold' && component.kind === 'logicGate') {
+        if (valueKey === 'highThreshold' && component.catalogTypeId === 'logic-gate') {
           return { ...component, bridge: { ...component.bridge, highThreshold: { ...component.bridge.highThreshold, value } } };
         }
 

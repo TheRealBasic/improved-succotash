@@ -58,7 +58,7 @@ const solveLinearSystem = (A: number[][], b: number[]): number[] => {
 };
 
 const sourceVoltageAt = (component: CircuitComponent, time: number, sourceSteps?: TransientAnalysisOptions['sourceSteps']): number => {
-  if (component.kind !== 'voltageSource') {
+  if (component.catalogTypeId !== 'voltage-source') {
     return 0;
   }
   const step = sourceSteps?.[component.id];
@@ -71,16 +71,16 @@ const sourceVoltageAt = (component: CircuitComponent, time: number, sourceSteps?
 export const runTransientAnalysis = (circuit: CircuitState, options: TransientAnalysisOptions): TransientAnalysisResult => {
   const nodeIds = circuit.nodes.filter((node) => !node.reference).map((node) => node.id);
   const nodeMap = new Map(nodeIds.map((id, idx) => [id, idx]));
-  const voltageSources = circuit.components.filter((component) => component.kind === 'voltageSource' || component.kind === 'wire');
+  const voltageSources = circuit.components.filter((component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire');
   const size = nodeIds.length + voltageSources.length;
 
   const capacitorState = new Map<string, number>();
   const inductorState = new Map<string, number>();
   circuit.components.forEach((component) => {
-    if (component.kind === 'capacitor') {
+    if (component.catalogTypeId === 'capacitor') {
       capacitorState.set(component.id, options.initialCapacitorVoltages?.[component.id] ?? 0);
     }
-    if (component.kind === 'inductor') {
+    if (component.catalogTypeId === 'inductor') {
       inductorState.set(component.id, options.initialInductorCurrents?.[component.id] ?? 0);
     }
   });
@@ -112,18 +112,18 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
     };
 
     for (const component of circuit.components) {
-      if (component.kind === 'resistor' && component.resistance.value) {
+      if (component.catalogTypeId === 'resistor' && component.resistance.value) {
         stampConductance(component.from, component.to, 1 / component.resistance.value);
-      } else if (component.kind === 'currentSource') {
+      } else if (component.catalogTypeId === 'current-source') {
         stampCurrent(component.from, component.to, (component.current.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0));
-      } else if (component.kind === 'capacitor') {
+      } else if (component.catalogTypeId === 'capacitor') {
         const C = component.capacitance.value ?? 0;
         const G = options.timeStep === 0 ? 0 : C / options.timeStep;
         const vPrev = capacitorState.get(component.id) ?? 0;
         const iEq = -G * vPrev;
         stampConductance(component.from, component.to, G);
         stampCurrent(component.from, component.to, iEq);
-      } else if (component.kind === 'inductor') {
+      } else if (component.catalogTypeId === 'inductor') {
         const L = component.inductance.value ?? 0;
         const G = L === 0 ? 1e12 : options.timeStep / L;
         const iPrev = inductorState.get(component.id) ?? 0;
@@ -155,11 +155,11 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
     waveform.push({ time, nodeVoltages });
 
     for (const component of circuit.components) {
-      if (component.kind === 'capacitor') {
+      if (component.catalogTypeId === 'capacitor') {
         const v = (nodeVoltages[component.from] ?? 0) - (nodeVoltages[component.to] ?? 0);
         capacitorState.set(component.id, v);
       }
-      if (component.kind === 'inductor') {
+      if (component.catalogTypeId === 'inductor') {
         const L = component.inductance.value ?? 0;
         const G = L === 0 ? 1e12 : options.timeStep / L;
         const v = (nodeVoltages[component.from] ?? 0) - (nodeVoltages[component.to] ?? 0);

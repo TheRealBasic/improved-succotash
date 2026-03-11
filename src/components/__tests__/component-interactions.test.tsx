@@ -67,7 +67,8 @@ describe('CircuitCanvas workflows', () => {
 describe('PropertyPanel updates and rendering', () => {
   const selectedResistor: CircuitComponent = {
     id: 'r1',
-    kind: 'resistor',
+    kind: 'passive2p',
+    catalogTypeId: 'resistor',
     from: 'n1',
     to: 'gnd',
     label: 'R1',
@@ -100,7 +101,8 @@ describe('PropertyPanel updates and rendering', () => {
   it('shows validation for incompatible units', () => {
     const capacitor: CircuitComponent = {
       id: 'c1',
-      kind: 'capacitor',
+      kind: 'passive2p',
+      catalogTypeId: 'capacitor',
       from: 'n1',
       to: 'gnd',
       capacitance: { value: 1e-6, known: true, computed: false, unit: 'F', constraints: { min: 0 } }

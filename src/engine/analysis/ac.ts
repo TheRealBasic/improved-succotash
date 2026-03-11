@@ -85,7 +85,7 @@ const linearSweep = (start: number, stop: number, points: number): number[] => {
 };
 
 const getSourceVoltage = (component: CircuitComponent): number => {
-  if (component.kind !== 'voltageSource') return 0;
+  if (component.catalogTypeId !== 'voltage-source') return 0;
   return (component.voltage.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0);
 };
 
@@ -97,7 +97,7 @@ const nodeIndexMap = (circuit: CircuitState): { nodeIds: string[]; map: Map<stri
 const buildAndSolveAtFrequency = (circuit: CircuitState, frequency: number): AcPoint => {
   const omega = 2 * Math.PI * frequency;
   const { nodeIds, map } = nodeIndexMap(circuit);
-  const voltageSources = circuit.components.filter((component) => component.kind === 'voltageSource' || component.kind === 'wire');
+  const voltageSources = circuit.components.filter((component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire');
   const size = nodeIds.length + voltageSources.length;
 
   const A: Complex[][] = Array.from({ length: size }, () => Array.from({ length: size }, () => c()));
@@ -122,16 +122,16 @@ const buildAndSolveAtFrequency = (circuit: CircuitState, frequency: number): AcP
   };
 
   for (const component of circuit.components) {
-    if (component.kind === 'resistor' && component.resistance.value) {
+    if (component.catalogTypeId === 'resistor' && component.resistance.value) {
       stampAdmittance(component.from, component.to, c(1 / component.resistance.value, 0));
-    } else if (component.kind === 'capacitor') {
+    } else if (component.catalogTypeId === 'capacitor') {
       const cap = component.capacitance.value ?? 0;
       stampAdmittance(component.from, component.to, c(0, omega * cap));
-    } else if (component.kind === 'inductor') {
+    } else if (component.catalogTypeId === 'inductor') {
       const L = component.inductance.value ?? 0;
       const y = omega === 0 || L === 0 ? c(1e12, 0) : c(0, -1 / (omega * L));
       stampAdmittance(component.from, component.to, y);
-    } else if (component.kind === 'currentSource') {
+    } else if (component.catalogTypeId === 'current-source') {
       stampCurrent(component.from, component.to, c((component.current.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0), 0));
     }
   }
