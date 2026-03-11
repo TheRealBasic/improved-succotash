@@ -66,19 +66,6 @@ const resolveSidebarPath = (item: ComponentCatalogItem): { categoryId: string; s
   return resolveLegacySidebarPath(item);
 };
 
-const ENTRY_METADATA: Record<string, { aliases: string[]; shortcutId?: string }> = {
-  resistor: { aliases: ['R'], shortcutId: 'place-resistor' },
-  capacitor: { aliases: ['C'], shortcutId: 'place-capacitor' },
-  inductor: { aliases: ['L', 'Coil'], shortcutId: 'place-inductor' },
-  'voltage-source': { aliases: ['VSource', 'Supply'], shortcutId: 'place-voltage' },
-  'current-source': { aliases: ['ISource'], shortcutId: 'place-current' },
-  diode: { aliases: ['Rectifier'], shortcutId: 'place-diode' },
-  bjt: { aliases: ['Transistor'], shortcutId: 'place-bjt' },
-  mosfet: { aliases: ['FET'], shortcutId: 'place-mosfet' },
-  'op-amp': { aliases: ['Operational Amplifier'], shortcutId: 'place-opamp' },
-  'logic-gate': { aliases: ['Gate'], shortcutId: 'place-logic' },
-  subcircuit: { aliases: ['Macro'], shortcutId: 'place-subcircuit' }
-};
 
 type SidebarGroupingMap = Record<string, { label: string; order: number; subcategories: Record<string, { label: string; order: number }> }>;
 
@@ -99,15 +86,14 @@ export const COMPONENT_CATALOG: ComponentCatalogCategory[] = Object.entries(
     const sidebarPath = resolveSidebarPath(item);
     grouped[sidebarPath.categoryId] ??= {};
     grouped[sidebarPath.categoryId][sidebarPath.subcategoryId] ??= [];
-    const metadata = ENTRY_METADATA[item.id];
     grouped[sidebarPath.categoryId][sidebarPath.subcategoryId].push({
       id: item.id,
       kind: item.kind,
       label: item.displayName,
-      aliases: metadata?.aliases ?? [item.partNumber ?? item.displayName],
+      aliases: item.metadata?.aliases ?? [item.partNumber ?? item.displayName],
       tags: item.tags,
       partNumber: item.partNumber,
-      shortcutId: metadata?.shortcutId
+      shortcutId: item.metadata?.shortcut ? item.metadata.shortcut.id ?? `place-${item.id}` : undefined
     });
     return grouped;
   }, {})
