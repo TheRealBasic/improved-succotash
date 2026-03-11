@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CircuitComponent, SolveCircuitResult, SolveTarget, TargetSolveResult, ValueMetadata } from '../engine/model';
 import { getDiagnosticGuidance } from '../engine/solver';
+import { parseValueWithUnit } from '../engine/units/parseValueWithUnit';
 import { ANIMATION_MS } from '../styles/animations';
 
 const PREFIX_FACTORS = {
@@ -90,12 +91,12 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
       return undefined;
     }
 
-    const parsed = Number(displayValue);
-    if (!displayValue || Number.isNaN(parsed)) {
-      return 'Enter a valid numeric value.';
+    const parsed = parseValueWithUnit(displayValue, { expectedUnit: editableField.metadata.unit, fallbackPrefix: prefix });
+    if ('error' in parsed) {
+      return parsed.error;
     }
 
-    const convertedValue = parsed * PREFIX_FACTORS[prefix];
+    const convertedValue = parsed.value;
     const constraints = editableField.metadata.constraints;
     if (constraints?.min != null && convertedValue < constraints.min) {
       return `Value must be ≥ ${constraints.min} ${editableField.metadata.unit}.`;
@@ -133,7 +134,7 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
               {editableField.label}
               <div className="unit-input-row">
                 <input
-                  type="number"
+                  type="text"
                   value={displayValue}
                   placeholder={String(editableField.metadata.value ?? '')}
                   onChange={(event) => setDisplayValue(event.target.value)}
@@ -152,12 +153,12 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
               type="button"
               disabled={validationMessage != null || displayValue.length === 0}
               onClick={() => {
-                const numeric = Number(displayValue);
-                if (Number.isNaN(numeric)) {
+                const parsed = parseValueWithUnit(displayValue, { expectedUnit: editableField.metadata.unit, fallbackPrefix: prefix });
+                if ('error' in parsed) {
                   return;
                 }
 
-                onUpdateComponentValue(selectedComponent.id, editableField.key, numeric * PREFIX_FACTORS[prefix]);
+                onUpdateComponentValue(selectedComponent.id, editableField.key, parsed.value);
                 setDisplayValue('');
                 setPrefix('');
                 setIsValueUpdated(true);

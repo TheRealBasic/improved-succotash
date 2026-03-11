@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CircuitCanvas } from '../CircuitCanvas';
 import { PropertyPanel } from '../PropertyPanel';
@@ -73,11 +73,11 @@ describe('PropertyPanel updates and rendering', () => {
     resistance: { value: 100, known: true, computed: false, unit: 'Ω', constraints: { min: 0.001, nonZero: true } }
   };
 
-  it('converts unit prefix input and applies updated value', () => {
+  it('parses compact value+unit input and applies normalized value', () => {
     const onUpdateComponentValue = vi.fn();
     const onValueApplied = vi.fn();
 
-    render(
+    const { container } = render(
       <PropertyPanel
         selectedComponent={selectedResistor}
         solved={{ values: {}, diagnostics: [] }}
@@ -89,12 +89,38 @@ describe('PropertyPanel updates and rendering', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '2.5' } });
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'k' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    fireEvent.change(within(container).getByRole('textbox'), { target: { value: '2.5k' } });
+    fireEvent.click(within(container).getByRole('button', { name: 'Apply' }));
 
     expect(onUpdateComponentValue).toHaveBeenCalledWith('r1', 'resistance', 2500);
     expect(onValueApplied).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows validation for incompatible units', () => {
+    const capacitor: CircuitComponent = {
+      id: 'c1',
+      kind: 'capacitor',
+      from: 'n1',
+      to: 'gnd',
+      capacitance: { value: 1e-6, known: true, computed: false, unit: 'F', constraints: { min: 0 } }
+    };
+
+    const { container } = render(
+      <PropertyPanel
+        selectedComponent={capacitor}
+        solved={{ values: {}, diagnostics: [] }}
+        selectedTarget={{ type: 'component_value', componentId: 'c1' }}
+        onChangeSelectedTarget={vi.fn()}
+        onSolveForTarget={vi.fn()}
+        onUpdateComponentValue={vi.fn()}
+        onValueApplied={vi.fn()}
+      />
+    );
+
+    fireEvent.change(within(container).getByRole('textbox'), { target: { value: '2mA' } });
+
+    expect(within(container).getByText(/incompatible with expected F/i)).toBeTruthy();
+    expect(within(container).getByRole('button', { name: 'Apply' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('renders computed values and diagnostics visibility', () => {
