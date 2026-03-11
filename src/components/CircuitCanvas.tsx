@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type DragEvent, type PointerEvent } from 'react';
 import type { ComponentKind } from '../engine/model';
 import { ANIMATION_CLASS, ANIMATION_MS } from '../styles/animations';
+import { shortcutLabel } from './shortcuts';
 
 export type CanvasNodePosition = {
   id: string;
@@ -52,13 +53,13 @@ const PORT_SNAP_DISTANCE = 14;
 const snapToGrid = (value: number): number => Math.round(value / GRID_SIZE) * GRID_SIZE;
 const toGridKey = (x: number, y: number): string => `${x}:${y}`;
 
-const componentPalette: Array<{ kind: Exclude<ComponentKind, 'wire'> | 'subcircuit'; label: string }> = [
-  { kind: 'resistor', label: 'Resistor' },
-  { kind: 'voltageSource', label: 'Voltage Source' },
-  { kind: 'currentSource', label: 'Current Source' },
-  { kind: 'capacitor', label: 'Capacitor' },
-  { kind: 'inductor', label: 'Inductor' },
-  { kind: 'subcircuit', label: 'Subcircuit' }
+const componentPalette: Array<{ kind: Exclude<ComponentKind, 'wire'> | 'subcircuit'; label: string; shortcutId: string }> = [
+  { kind: 'resistor', label: 'Resistor', shortcutId: 'place-resistor' },
+  { kind: 'voltageSource', label: 'Voltage Source', shortcutId: 'place-voltage' },
+  { kind: 'currentSource', label: 'Current Source', shortcutId: 'place-current' },
+  { kind: 'capacitor', label: 'Capacitor', shortcutId: 'place-capacitor' },
+  { kind: 'inductor', label: 'Inductor', shortcutId: 'place-inductor' },
+  { kind: 'subcircuit', label: 'Subcircuit', shortcutId: 'place-subcircuit' }
 ];
 
 const componentBounds = (fromNode: CanvasNodePosition, toNode: CanvasNodePosition): Rect => ({
@@ -252,17 +253,18 @@ export const CircuitCanvas = ({
             className="palette-item"
             draggable
             onDragStart={(event) => event.dataTransfer.setData('application/x-component-kind', entry.kind)}
+            title={`Shortcut: ${shortcutLabel(entry.shortcutId)}`}
           >
             {entry.label}
           </button>
         ))}
-        <button type="button" onClick={onGroupSelected}>Group</button>
-        <button type="button" onClick={onUngroupSelected}>Ungroup</button>
+        <button type="button" onClick={onGroupSelected} title={`Shortcut: ${shortcutLabel('group')}`}>Group</button>
+        <button type="button" onClick={onUngroupSelected} title={`Shortcut: ${shortcutLabel('ungroup')}`}>Ungroup</button>
         <label>
           <input type="checkbox" checked={rerouteWiresOnMove} onChange={(event) => onSetRerouteWiresOnMove(event.target.checked)} />
           Reroute wires on move
         </label>
-        <button type="button" onClick={onDeleteSelected} className="danger">
+        <button type="button" onClick={onDeleteSelected} className="danger" title={`Shortcut: ${shortcutLabel('delete')}`}>
           Delete Selected
         </button>
       </div>

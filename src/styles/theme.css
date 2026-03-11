@@ -158,3 +158,29 @@ body {
   gap: 0.4rem;
   margin-bottom: 0.4rem;
 }
+
+.timeline-panel {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.timeline-item {
+  text-align: left;
+  border: 1px solid #3553a3;
+  background: #13224d;
+  color: #e6ecff;
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
+}
+
+.timeline-item.active {
+  border-color: #7cd4ff;
+  box-shadow: 0 0 0 1px #7cd4ff;
+}
+
+.shortcut-help ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.25rem;
+}
