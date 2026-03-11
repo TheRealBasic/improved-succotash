@@ -38,6 +38,9 @@ describe('solveCircuit', () => {
     expect(result.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')).toHaveLength(0);
     expect(result.values['node:n1:voltage']?.value).toBeCloseTo(10, 6);
     expect(result.values['component:r1:current']?.value).toBeCloseTo(2, 6);
+    expect(result.equationTrace?.length).toBeGreaterThan(0);
+    expect(result.equationTrace?.some((row) => row.rowType === 'kcl' && row.kclNodeId === 'n1')).toBe(true);
+    expect(result.equationTrace?.some((row) => row.constrainedComponentId === 'vs1')).toBe(true);
   });
 
   it('reports underdetermined for missing constitutive constraints', () => {

@@ -145,6 +145,31 @@ export type SolveCircuitResult = {
   values: Record<string, SolvedCircuitValue>;
   diagnostics: SolverDiagnostic[];
   monteCarlo?: MonteCarloResult;
+  equationTrace?: EquationTraceRow[];
+};
+
+export type EquationTraceTerm = {
+  componentId?: string;
+  variableKey: string;
+  coefficient: number;
+  description: string;
+};
+
+export type EquationTraceConstant = {
+  componentId?: string;
+  value: number;
+  description: string;
+};
+
+export type EquationTraceRow = {
+  rowIndex: number;
+  rowId: string;
+  rowType: 'kcl' | 'constraint';
+  kclNodeId?: string;
+  constrainedComponentId?: string;
+  terms: EquationTraceTerm[];
+  constants: EquationTraceConstant[];
+  rhs: number;
 };
 
 export type SolveTarget =

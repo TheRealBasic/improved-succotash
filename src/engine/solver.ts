@@ -3,6 +3,9 @@ import type {
   CircuitComponent,
   CircuitNode,
   CircuitState,
+  EquationTraceConstant,
+  EquationTraceRow,
+  EquationTraceTerm,
   SolveCircuitResult,
   SolveTarget,
   SolvedCircuitValue,
@@ -235,6 +238,7 @@ const validateCircuit = (circuit: CircuitState): SolverDiagnostic[] => {
 type EquationBuild = {
   A: number[][];
   b: number[];
+  equationTrace: EquationTraceRow[];
   unknownNodeIds: string[];
   sourceCurrentVarIds: string[];
   knownNodeVoltages: Map<string, number>;
@@ -267,6 +271,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
 
   const A: number[][] = [];
   const b: number[] = [];
+  const equationTrace: EquationTraceRow[] = [];
 
   const variableIndex = new Map<string, number>();
   unknownNodeIds.forEach((id, idx) => variableIndex.set(`V:${id}`, idx));
@@ -286,6 +291,8 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
   for (const nodeId of unknownNodeIds) {
     const row = new Array<number>(unknownCount).fill(0);
     let rhs = 0;
+    const rowTerms: EquationTraceTerm[] = [];
+    const rowConstants: EquationTraceConstant[] = [];
 
     for (const component of circuit.components) {
       if (component.kind === 'resistor') {
@@ -305,31 +312,68 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
         const selfNode = isFrom ? component.from : component.to;
         const otherNode = isFrom ? component.to : component.from;
 
-        addCoefficient(row, `V:${selfNode}`, sign * conductance);
-        addCoefficient(row, `V:${otherNode}`, -sign * conductance);
+        const selfContribution = addCoefficient(row, `V:${selfNode}`, sign * conductance);
+        if (selfContribution !== 0) {
+          rowTerms.push({
+            componentId: component.id,
+            variableKey: `V:${selfNode}`,
+            coefficient: selfContribution,
+            description: `${component.id} conductance @ ${selfNode}`
+          });
+        }
+
+        const otherContribution = addCoefficient(row, `V:${otherNode}`, -sign * conductance);
+        if (otherContribution !== 0) {
+          rowTerms.push({
+            componentId: component.id,
+            variableKey: `V:${otherNode}`,
+            coefficient: otherContribution,
+            description: `${component.id} conductance @ ${otherNode}`
+          });
+        }
 
         const knownOther = getKnownVoltage(otherNode);
         if (knownOther != null) {
-          rhs += sign * conductance * knownOther;
+          const contribution = sign * conductance * knownOther;
+          rhs += contribution;
+          rowConstants.push({
+            componentId: component.id,
+            value: contribution,
+            description: `${component.id} known voltage on ${otherNode}`
+          });
         }
         const knownSelf = getKnownVoltage(selfNode);
         if (knownSelf != null) {
-          rhs -= sign * conductance * knownSelf;
+          const contribution = -sign * conductance * knownSelf;
+          rhs += contribution;
+          rowConstants.push({
+            componentId: component.id,
+            value: contribution,
+            description: `${component.id} known voltage on ${selfNode}`
+          });
         }
       } else if (component.kind === 'currentSource') {
         const current = component.current.value ?? 0;
         if (component.from === nodeId) {
           rhs -= current;
+          rowConstants.push({ componentId: component.id, value: -current, description: `${component.id} source current leaving ${nodeId}` });
         }
         if (component.to === nodeId) {
           rhs += current;
+          rowConstants.push({ componentId: component.id, value: current, description: `${component.id} source current entering ${nodeId}` });
         }
       } else if (component.kind === 'voltageSource' || component.kind === 'wire' || component.kind === 'inductor') {
         if (component.from === nodeId) {
-          addCoefficient(row, `I:${component.id}`, 1);
+          const contribution = addCoefficient(row, `I:${component.id}`, 1);
+          if (contribution !== 0) {
+            rowTerms.push({ componentId: component.id, variableKey: `I:${component.id}`, coefficient: contribution, description: `${component.id} branch current leaving ${nodeId}` });
+          }
         }
         if (component.to === nodeId) {
-          addCoefficient(row, `I:${component.id}`, -1);
+          const contribution = addCoefficient(row, `I:${component.id}`, -1);
+          if (contribution !== 0) {
+            rowTerms.push({ componentId: component.id, variableKey: `I:${component.id}`, coefficient: contribution, description: `${component.id} branch current entering ${nodeId}` });
+          }
         }
       } else if (component.kind === 'capacitor') {
         diagnostics.push({
@@ -343,31 +387,60 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
 
     A.push(row);
     b.push(-rhs);
+    equationTrace.push({
+      rowIndex: equationTrace.length,
+      rowId: `kcl:${nodeId}`,
+      rowType: 'kcl',
+      kclNodeId: nodeId,
+      terms: rowTerms,
+      constants: rowConstants,
+      rhs: -rhs
+    });
   }
 
   for (const component of voltageConstraintComponents) {
     const row = new Array<number>(unknownCount).fill(0);
     const sourceVoltage = component.kind === 'voltageSource' ? (component.voltage.value ?? 0) : 0;
+    const rowTerms: EquationTraceTerm[] = [];
+    const rowConstants: EquationTraceConstant[] = [];
 
     const fromKnown = getKnownVoltage(component.from);
     const toKnown = getKnownVoltage(component.to);
 
-    addCoefficient(row, `V:${component.from}`, 1);
-    addCoefficient(row, `V:${component.to}`, -1);
+    const fromContribution = addCoefficient(row, `V:${component.from}`, 1);
+    if (fromContribution !== 0) {
+      rowTerms.push({ componentId: component.id, variableKey: `V:${component.from}`, coefficient: fromContribution, description: `${component.id} positive terminal (${component.from})` });
+    }
+    const toContribution = addCoefficient(row, `V:${component.to}`, -1);
+    if (toContribution !== 0) {
+      rowTerms.push({ componentId: component.id, variableKey: `V:${component.to}`, coefficient: toContribution, description: `${component.id} negative terminal (${component.to})` });
+    }
 
     let rhs = sourceVoltage;
+    rowConstants.push({ componentId: component.id, value: sourceVoltage, description: `${component.id} imposed source voltage` });
     if (fromKnown != null) {
       rhs -= fromKnown;
+      rowConstants.push({ componentId: component.id, value: -fromKnown, description: `Known voltage at ${component.from}` });
     }
     if (toKnown != null) {
       rhs += toKnown;
+      rowConstants.push({ componentId: component.id, value: toKnown, description: `Known voltage at ${component.to}` });
     }
 
     A.push(row);
     b.push(rhs);
+    equationTrace.push({
+      rowIndex: equationTrace.length,
+      rowId: `constraint:${component.id}`,
+      rowType: 'constraint',
+      constrainedComponentId: component.id,
+      terms: rowTerms,
+      constants: rowConstants,
+      rhs
+    });
   }
 
-  return { A, b, unknownNodeIds, sourceCurrentVarIds, knownNodeVoltages, diagnostics };
+  return { A, b, equationTrace, unknownNodeIds, sourceCurrentVarIds, knownNodeVoltages, diagnostics };
 };
 
 type SolveMatrixResult = {
@@ -490,7 +563,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
   const diagnostics = validateCircuit(circuitState);
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === 'error');
   if (hasErrors) {
-    return { values: {}, diagnostics };
+    return { values: {}, diagnostics, equationTrace: [] };
   }
 
   const equationBuild = buildEquations(circuitState);
@@ -498,7 +571,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
 
   const variableCount = equationBuild.A[0]?.length ?? 0;
   if (variableCount === 0) {
-    return { values: {}, diagnostics };
+    return { values: {}, diagnostics, equationTrace: equationBuild.equationTrace };
   }
 
   const { solution, rankA, rankAugmented } = solveLinearSystem(equationBuild.A, equationBuild.b);
@@ -582,7 +655,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
     }
   }
 
-  return { values, diagnostics };
+  return { values, diagnostics, equationTrace: equationBuild.equationTrace };
 };
 
 export const solveCircuit = (circuitState: CircuitState, options?: SolveCircuitOptions): SolveCircuitResult => {
