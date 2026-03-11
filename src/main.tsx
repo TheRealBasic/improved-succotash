@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { CircuitCanvas, type CanvasComponent } from './components/CircuitCanvas';
 import { EquationBreakdownPanel } from './components/EquationBreakdownPanel';
 import { PropertyPanel } from './components/PropertyPanel';
+import { ComponentLibrarySidebar } from './components/ComponentLibrarySidebar';
 import { SHORTCUTS, isTextInputLike, shortcutLabel } from './components/shortcuts';
 import {
   getSfxSettings,
@@ -718,35 +719,7 @@ const App = () => {
 
       <section className="workspace">
         <aside className={`inventory-sidebar panel ${sidebarOpen ? 'is-open' : ''}`}>
-          <div className="sidebar-section">
-            <h2>Component Inventory</h2>
-            <div className="inventory-grid">
-              {[
-                { kind: 'resistor', label: 'Resistor', shortcutId: 'place-resistor' },
-                { kind: 'voltageSource', label: 'Voltage Source', shortcutId: 'place-voltage' },
-                { kind: 'currentSource', label: 'Current Source', shortcutId: 'place-current' },
-                { kind: 'capacitor', label: 'Capacitor', shortcutId: 'place-capacitor' },
-                { kind: 'inductor', label: 'Inductor', shortcutId: 'place-inductor' },
-                { kind: 'diode', label: 'Diode', shortcutId: 'place-diode' },
-                { kind: 'bjt', label: 'BJT', shortcutId: 'place-bjt' },
-                { kind: 'mosfet', label: 'MOSFET', shortcutId: 'place-mosfet' },
-                { kind: 'opAmp', label: 'Op-Amp', shortcutId: 'place-opamp' },
-                { kind: 'logicGate', label: 'Logic Gate', shortcutId: 'place-logic' },
-                { kind: 'subcircuit', label: 'Subcircuit', shortcutId: 'place-subcircuit' }
-              ].map((entry) => (
-                <button
-                  key={entry.kind}
-                  type="button"
-                  className="palette-item"
-                  draggable
-                  onDragStart={(event) => event.dataTransfer.setData('application/x-component-kind', entry.kind)}
-                  title={`Shortcut: ${shortcutLabel(entry.shortcutId)}`}
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ComponentLibrarySidebar shortcutLabel={shortcutLabel} />
 
           <div className="sidebar-section">
             <h2>Canvas Actions</h2>
