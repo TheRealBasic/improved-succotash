@@ -25,15 +25,11 @@ describe('CircuitCanvas workflows', () => {
         components={[]}
         simulationActive={false}
         rerouteWiresOnMove
-        onSetRerouteWiresOnMove={vi.fn()}
         onAddComponentAt={onAddComponentAt}
         onAddSubcircuitAt={vi.fn()}
-        onGroupSelected={vi.fn()}
-        onUngroupSelected={vi.fn()}
         onSelectNode={vi.fn()}
         onSelectComponent={vi.fn()}
         onMoveNode={vi.fn()}
-        onDeleteSelected={vi.fn()}
         onStartOrCompleteWire={onStartOrCompleteWire}
       />
     );

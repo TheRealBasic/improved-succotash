@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent, type PointerEvent } from 'react';
 import type { ComponentKind } from '../engine/model';
 import { ANIMATION_CLASS, ANIMATION_MS } from '../styles/animations';
-import { shortcutLabel } from './shortcuts';
 
 export type CanvasNodePosition = {
   id: string;
@@ -33,15 +32,11 @@ type CircuitCanvasProps = {
   pendingWireFromNodeId?: string;
   simulationActive: boolean;
   rerouteWiresOnMove: boolean;
-  onSetRerouteWiresOnMove: (enabled: boolean) => void;
   onAddComponentAt: (kind: Exclude<ComponentKind, 'wire'>, x: number, y: number) => void;
   onAddSubcircuitAt: (x: number, y: number) => void;
-  onGroupSelected: () => void;
-  onUngroupSelected: () => void;
   onSelectNode: (nodeId: string) => void;
   onSelectComponent: (componentId: string) => void;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
-  onDeleteSelected: () => void;
   onStartOrCompleteWire: (nodeId: string) => void;
 };
 
@@ -53,19 +48,6 @@ const PORT_SNAP_DISTANCE = 14;
 const snapToGrid = (value: number): number => Math.round(value / GRID_SIZE) * GRID_SIZE;
 const toGridKey = (x: number, y: number): string => `${x}:${y}`;
 
-const componentPalette: Array<{ kind: Exclude<ComponentKind, 'wire'> | 'subcircuit'; label: string; shortcutId: string }> = [
-  { kind: 'resistor', label: 'Resistor', shortcutId: 'place-resistor' },
-  { kind: 'voltageSource', label: 'Voltage Source', shortcutId: 'place-voltage' },
-  { kind: 'currentSource', label: 'Current Source', shortcutId: 'place-current' },
-  { kind: 'capacitor', label: 'Capacitor', shortcutId: 'place-capacitor' },
-  { kind: 'inductor', label: 'Inductor', shortcutId: 'place-inductor' },
-  { kind: 'diode', label: 'Diode', shortcutId: 'place-diode' },
-  { kind: 'bjt', label: 'BJT', shortcutId: 'place-bjt' },
-  { kind: 'mosfet', label: 'MOSFET', shortcutId: 'place-mosfet' },
-  { kind: 'opAmp', label: 'Op-Amp', shortcutId: 'place-opamp' },
-  { kind: 'logicGate', label: 'Logic Gate', shortcutId: 'place-logic' },
-  { kind: 'subcircuit', label: 'Subcircuit', shortcutId: 'place-subcircuit' }
-];
 
 const componentBounds = (fromNode: CanvasNodePosition, toNode: CanvasNodePosition): Rect => ({
   left: Math.min(fromNode.x, toNode.x) - GRID_SIZE,
@@ -164,15 +146,11 @@ export const CircuitCanvas = ({
   pendingWireFromNodeId,
   simulationActive,
   rerouteWiresOnMove,
-  onSetRerouteWiresOnMove,
   onAddComponentAt,
   onAddSubcircuitAt,
-  onGroupSelected,
-  onUngroupSelected,
   onSelectNode,
   onSelectComponent,
   onMoveNode,
-  onDeleteSelected,
   onStartOrCompleteWire
 }: CircuitCanvasProps) => {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
@@ -272,30 +250,6 @@ export const CircuitCanvas = ({
     <article className="panel circuit-canvas">
       <h2>Circuit Canvas</h2>
       <p>Drag a component into the grid, click terminals to wire, drag terminals to move.</p>
-      <div className="canvas-toolbar">
-        {componentPalette.map((entry) => (
-          <button
-            key={entry.kind}
-            type="button"
-            className="palette-item"
-            draggable
-            onDragStart={(event) => event.dataTransfer.setData('application/x-component-kind', entry.kind)}
-            title={`Shortcut: ${shortcutLabel(entry.shortcutId)}`}
-          >
-            {entry.label}
-          </button>
-        ))}
-        <button type="button" onClick={onGroupSelected} title={`Shortcut: ${shortcutLabel('group')}`}>Group</button>
-        <button type="button" onClick={onUngroupSelected} title={`Shortcut: ${shortcutLabel('ungroup')}`}>Ungroup</button>
-        <label>
-          <input type="checkbox" checked={rerouteWiresOnMove} onChange={(event) => onSetRerouteWiresOnMove(event.target.checked)} />
-          Reroute wires on move
-        </label>
-        <button type="button" onClick={onDeleteSelected} className="danger" title={`Shortcut: ${shortcutLabel('delete')}`}>
-          Delete Selected
-        </button>
-      </div>
-
       <svg
         className="canvas-surface"
         width={CANVAS_WIDTH}
