@@ -184,3 +184,55 @@ body {
   display: grid;
   gap: 0.25rem;
 }
+
+.probe-badge {
+  fill: #ffd36d;
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.oscilloscope-panel {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.scope-surface {
+  width: 100%;
+  border: 1px solid #2f447d;
+  border-radius: 8px;
+}
+
+.scope-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #bfcfff;
+}
+
+.scope-meta p {
+  margin: 0;
+}
+
+.probe-channel-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.probe-channel-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.probe-channel-list button,
+.probe-channel-list select {
+  border: 1px solid #3553a3;
+  border-radius: 8px;
+  background: #13224d;
+  color: #e6ecff;
+  padding: 0.2rem 0.45rem;
+}

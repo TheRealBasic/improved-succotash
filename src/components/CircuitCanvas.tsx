@@ -33,6 +33,11 @@ type CircuitCanvasProps = {
   pendingWireFromNodeId?: string;
   simulationActive: boolean;
   rerouteWiresOnMove: boolean;
+  nodeVoltages?: Record<string, number>;
+  componentCurrents?: Record<string, number>;
+  probeToolActive?: boolean;
+  probedNodeIds?: string[];
+  probedComponentIds?: string[];
   onSetRerouteWiresOnMove: (enabled: boolean) => void;
   onAddComponentAt: (kind: Exclude<ComponentKind, 'wire'>, x: number, y: number) => void;
   onAddSubcircuitAt: (x: number, y: number) => void;
@@ -43,6 +48,8 @@ type CircuitCanvasProps = {
   onMoveNode: (nodeId: string, x: number, y: number) => void;
   onDeleteSelected: () => void;
   onStartOrCompleteWire: (nodeId: string) => void;
+  onProbeNode?: (nodeId: string) => void;
+  onProbeComponent?: (componentId: string) => void;
 };
 
 const GRID_SIZE = 20;
@@ -70,6 +77,17 @@ const componentBounds = (fromNode: CanvasNodePosition, toNode: CanvasNodePositio
 });
 
 const intersectsRect = (x: number, y: number, rect: Rect): boolean => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+
+const heatColor = (value: number, min: number, max: number): string => {
+  if (!Number.isFinite(value) || max - min < 1e-9) {
+    return '#86a3ff';
+  }
+  const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const r = Math.round(40 + 215 * t);
+  const g = Math.round(120 + 90 * (1 - Math.abs(t - 0.5) * 2));
+  const b = Math.round(255 - 215 * t);
+  return `rgb(${r},${g},${b})`;
+};
 
 const buildOrthogonalRoute = (start: Point, end: Point, blocked: Rect[]): Point[] => {
   if (start.x === end.x || start.y === end.y) {
@@ -137,6 +155,11 @@ export const CircuitCanvas = ({
   pendingWireFromNodeId,
   simulationActive,
   rerouteWiresOnMove,
+  nodeVoltages,
+  componentCurrents,
+  probeToolActive,
+  probedNodeIds = [],
+  probedComponentIds = [],
   onSetRerouteWiresOnMove,
   onAddComponentAt,
   onAddSubcircuitAt,
@@ -146,7 +169,9 @@ export const CircuitCanvas = ({
   onSelectComponent,
   onMoveNode,
   onDeleteSelected,
-  onStartOrCompleteWire
+  onStartOrCompleteWire,
+  onProbeNode,
+  onProbeComponent
 }: CircuitCanvasProps) => {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null);
@@ -155,6 +180,16 @@ export const CircuitCanvas = ({
   const [renderedComponents, setRenderedComponents] = useState<Array<CanvasComponent & { status: RenderStatus }>>([]);
 
   const nodeById = useMemo(() => new Map(renderedNodes.map((node) => [node.id, node])), [renderedNodes]);
+  const probeNodeSet = useMemo(() => new Set(probedNodeIds), [probedNodeIds]);
+  const probeComponentSet = useMemo(() => new Set(probedComponentIds), [probedComponentIds]);
+
+  const voltageRange = useMemo(() => {
+    const values = Object.values(nodeVoltages ?? {}).filter(Number.isFinite);
+    if (!values.length) {
+      return { min: 0, max: 1 };
+    }
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [nodeVoltages]);
 
   useEffect(() => {
     setRenderedNodes((current) => {
@@ -330,6 +365,9 @@ export const CircuitCanvas = ({
           const route = component.kind === 'wire' && rerouteWiresOnMove
             ? buildOrthogonalRoute({ x: fromNode.x, y: fromNode.y }, { x: toNode.x, y: toNode.y }, blockedRects)
             : [{ x: fromNode.x, y: fromNode.y }, { x: toNode.x, y: toNode.y }];
+          const avgVoltage = ((nodeVoltages?.[component.from] ?? 0) + (nodeVoltages?.[component.to] ?? 0)) / 2;
+          const currentMagnitude = Math.abs(componentCurrents?.[component.id] ?? 0);
+          const currentSign = Math.sign(componentCurrents?.[component.id] ?? 0);
 
           return (
             <g key={component.id} className={animationClass}>
@@ -337,10 +375,24 @@ export const CircuitCanvas = ({
                 points={route.map((point) => `${point.x},${point.y}`).join(' ')}
                 fill="none"
                 className={`component-line ${component.kind === 'wire' && simulationActive ? 'wire-line' : ''}`}
-                stroke={isSelected ? '#8fc7ff' : component.kind === 'wire' ? '#8ef7b8' : '#d4dbff'}
-                strokeWidth={isSelected ? 5 : 3}
-                onClick={() => onSelectComponent(component.id)}
+                stroke={isSelected ? '#8fc7ff' : heatColor(avgVoltage, voltageRange.min, voltageRange.max)}
+                strokeWidth={isSelected ? 5 : Math.min(6, 2.5 + currentMagnitude * 12)}
+                style={
+                  component.kind === 'wire' && simulationActive
+                    ? {
+                        animationDuration: `${Math.max(220, 900 - currentMagnitude * 600)}ms`,
+                        animationDirection: currentSign >= 0 ? 'normal' : 'reverse',
+                        opacity: 0.7 + Math.min(0.3, currentMagnitude * 1.5)
+                      }
+                    : undefined
+                }
+                onClick={() => (probeToolActive ? onProbeComponent?.(component.id) : onSelectComponent(component.id))}
               />
+              {probeComponentSet.has(component.id) && (
+                <text x={(fromNode.x + toNode.x) / 2} y={(fromNode.y + toNode.y) / 2 + 14} textAnchor="middle" className="probe-badge">
+                  ⦿
+                </text>
+              )}
               <text
                 x={(fromNode.x + toNode.x) / 2}
                 y={(fromNode.y + toNode.y) / 2 - 8}
@@ -378,10 +430,14 @@ export const CircuitCanvas = ({
               cy={node.y}
               r={isSelected ? 9 : 7}
               className={`node-dot ${animationClass}`}
-              fill={node.reference ? '#9dffcc' : isHoverTarget ? '#ffe38f' : isPending ? '#ffd36d' : '#86a3ff'}
-              stroke="#061127"
-              strokeWidth={2}
+              fill={node.reference ? '#9dffcc' : isHoverTarget ? '#ffe38f' : isPending ? '#ffd36d' : heatColor(nodeVoltages?.[node.id] ?? 0, voltageRange.min, voltageRange.max)}
+              stroke={probeNodeSet.has(node.id) ? '#ffd36d' : '#061127'}
+              strokeWidth={probeNodeSet.has(node.id) ? 3 : 2}
               onPointerDown={() => {
+                if (probeToolActive) {
+                  onProbeNode?.(node.id);
+                  return;
+                }
                 onSelectNode(node.id);
                 setDraggingNodeId(node.id);
               }}
