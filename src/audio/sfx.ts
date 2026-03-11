@@ -1,8 +1,17 @@
-export type SfxEventType = 'place' | 'connect' | 'error' | 'start' | 'stop';
+export type SfxEventType = 'place' | 'connect' | 'error' | 'start' | 'stop' | 'converge' | 'warning';
+
+export type SfxThemeProfile = 'classic' | 'soft' | 'bright';
+
+export type SfxIntensity = 'relaxed' | 'balanced' | 'high';
+
+export type SfxAccessibilityMode = 'all' | 'alertsOnly';
 
 type SfxSettings = {
   volume: number;
   muted: boolean;
+  themeProfile: SfxThemeProfile;
+  intensity: SfxIntensity;
+  accessibilityMode: SfxAccessibilityMode;
 };
 
 type SfxSubscriber = (settings: SfxSettings) => void;
@@ -10,7 +19,10 @@ type SfxSubscriber = (settings: SfxSettings) => void;
 const STORAGE_KEY = 'circuit-workbench-sfx-settings';
 const DEFAULT_SETTINGS: SfxSettings = {
   volume: 0.45,
-  muted: false
+  muted: false,
+  themeProfile: 'classic',
+  intensity: 'balanced',
+  accessibilityMode: 'all'
 };
 
 const subscribers = new Set<SfxSubscriber>();
@@ -26,6 +38,26 @@ const envelope = (gain: GainNode, startTime: number, peak: number, duration: num
   gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 };
 
+const INTENSITY_GAIN: Record<SfxIntensity, number> = {
+  relaxed: 0.8,
+  balanced: 1,
+  high: 1.2
+};
+
+const INTENSITY_RATE: Record<SfxIntensity, number> = {
+  relaxed: 0.92,
+  balanced: 1,
+  high: 1.1
+};
+
+const THEME_FREQUENCY_SHIFT: Record<SfxThemeProfile, number> = {
+  classic: 1,
+  soft: 0.86,
+  bright: 1.16
+};
+
+const ALERT_EVENTS = new Set<SfxEventType>(['warning', 'error']);
+
 const readStoredSettings = (): SfxSettings => {
   if (typeof window === 'undefined') {
     return DEFAULT_SETTINGS;
@@ -40,7 +72,16 @@ const readStoredSettings = (): SfxSettings => {
     const parsed = JSON.parse(raw) as Partial<SfxSettings>;
     return {
       volume: typeof parsed.volume === 'number' ? Math.min(1, Math.max(0, parsed.volume)) : DEFAULT_SETTINGS.volume,
-      muted: typeof parsed.muted === 'boolean' ? parsed.muted : DEFAULT_SETTINGS.muted
+      muted: typeof parsed.muted === 'boolean' ? parsed.muted : DEFAULT_SETTINGS.muted,
+      themeProfile:
+        parsed.themeProfile === 'classic' || parsed.themeProfile === 'soft' || parsed.themeProfile === 'bright'
+          ? parsed.themeProfile
+          : DEFAULT_SETTINGS.themeProfile,
+      intensity:
+        parsed.intensity === 'relaxed' || parsed.intensity === 'balanced' || parsed.intensity === 'high'
+          ? parsed.intensity
+          : DEFAULT_SETTINGS.intensity,
+      accessibilityMode: parsed.accessibilityMode === 'alertsOnly' ? 'alertsOnly' : 'all'
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -61,7 +102,7 @@ const emitSettings = () => {
 
 const createBuffer = (context: AudioContext, eventType: SfxEventType): AudioBuffer => {
   const sampleRate = context.sampleRate;
-  const duration = eventType === 'error' ? 0.2 : 0.16;
+  const duration = eventType === 'error' ? 0.24 : eventType === 'warning' ? 0.2 : 0.16;
   const frameCount = Math.floor(sampleRate * duration);
   const buffer = context.createBuffer(1, frameCount, sampleRate);
   const channel = buffer.getChannelData(0);
@@ -87,10 +128,16 @@ const createBuffer = (context: AudioContext, eventType: SfxEventType): AudioBuff
       case 'stop':
         base = 520 - 240 * progress;
         break;
+      case 'converge':
+        base = 360 + 140 * Math.sin(progress * Math.PI);
+        break;
+      case 'warning':
+        base = 260 + 70 * Math.sin(progress * 8 * Math.PI);
+        break;
     }
 
     const wave = Math.sin(2 * Math.PI * base * t);
-    const harmonics = 0.35 * Math.sin(2 * Math.PI * base * 2 * t);
+    const harmonics = 0.35 * Math.sin(2 * Math.PI * base * 2 * t) + 0.18 * Math.sin(2 * Math.PI * base * 3 * t);
     const shape = Math.exp(-7 * progress);
     channel[i] = (wave + harmonics) * shape;
   }
@@ -121,7 +168,7 @@ const preloadBuffers = (context: AudioContext): Map<SfxEventType, AudioBuffer> =
   }
 
   preloadedBuffers = new Map<SfxEventType, AudioBuffer>();
-  (['place', 'connect', 'error', 'start', 'stop'] as const).forEach((eventType) => {
+  (['place', 'connect', 'error', 'start', 'stop', 'converge', 'warning'] as const).forEach((eventType) => {
     preloadedBuffers?.set(eventType, createBuffer(context, eventType));
   });
 
@@ -183,7 +230,29 @@ export const toggleSfxMute = (): void => {
   emitSettings();
 };
 
+export const setSfxThemeProfile = (themeProfile: SfxThemeProfile): void => {
+  settings = { ...settings, themeProfile };
+  writeStoredSettings();
+  emitSettings();
+};
+
+export const setSfxIntensity = (intensity: SfxIntensity): void => {
+  settings = { ...settings, intensity };
+  writeStoredSettings();
+  emitSettings();
+};
+
+export const setSfxAccessibilityMode = (accessibilityMode: SfxAccessibilityMode): void => {
+  settings = { ...settings, accessibilityMode };
+  writeStoredSettings();
+  emitSettings();
+};
+
 export const playSfx = (eventType: SfxEventType): void => {
+  if (settings.accessibilityMode === 'alertsOnly' && !ALERT_EVENTS.has(eventType)) {
+    return;
+  }
+
   if (settings.muted || settings.volume <= 0) {
     return;
   }
@@ -207,12 +276,19 @@ export const playSfx = (eventType: SfxEventType): void => {
 
   const source = context.createBufferSource();
   source.buffer = buffer;
+  source.playbackRate.value = INTENSITY_RATE[settings.intensity] * (eventType === 'warning' ? 0.95 : 1);
 
   const gain = context.createGain();
+  const tone = context.createBiquadFilter();
+  tone.type = 'peaking';
+  tone.frequency.value = 980 * THEME_FREQUENCY_SHIFT[settings.themeProfile];
+  tone.Q.value = 1.1;
+  tone.gain.value = settings.themeProfile === 'soft' ? -4 : settings.themeProfile === 'bright' ? 5 : 0;
   const startTime = context.currentTime;
-  envelope(gain, startTime, settings.volume, buffer.duration);
+  envelope(gain, startTime, Math.min(1, settings.volume * INTENSITY_GAIN[settings.intensity]), buffer.duration / source.playbackRate.value);
 
-  source.connect(gain);
+  source.connect(tone);
+  tone.connect(gain);
   gain.connect(context.destination);
   source.start(startTime);
 };
