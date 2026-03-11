@@ -1,4 +1,5 @@
 import type { CircuitComponent, CircuitState, SolverDiagnostic } from '../model';
+import { filterCircuitByCapability, getUnsupportedComponentDiagnostics } from '../componentBehavior';
 
 type Complex = { re: number; im: number };
 
@@ -173,8 +174,13 @@ const buildAndSolveAtFrequency = (circuit: CircuitState, frequency: number): AcP
   return { frequency, nodeVoltages, magnitude, phaseDeg };
 };
 
-export const runAcAnalysis = (circuit: CircuitState, options: AcAnalysisOptions): AcAnalysisResult => ({
-  mode: 'ac',
-  sweep: linearSweep(options.startHz, options.stopHz, options.points).map((frequency) => buildAndSolveAtFrequency(circuit, frequency)),
-  diagnostics: []
-});
+export const runAcAnalysis = (circuit: CircuitState, options: AcAnalysisOptions): AcAnalysisResult => {
+  const diagnostics = getUnsupportedComponentDiagnostics(circuit, 'ac');
+  const supportedCircuit = filterCircuitByCapability(circuit, 'ac');
+
+  return {
+    mode: 'ac',
+    sweep: linearSweep(options.startHz, options.stopHz, options.points).map((frequency) => buildAndSolveAtFrequency(supportedCircuit, frequency)),
+    diagnostics
+  };
+};

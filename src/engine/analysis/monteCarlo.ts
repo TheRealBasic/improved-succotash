@@ -7,6 +7,7 @@ import type {
   SolverDiagnostic,
   ValueMetadata
 } from '../model';
+import { filterCircuitByCapability, getUnsupportedComponentDiagnostics } from '../componentBehavior';
 
 export type MonteCarloOptions = {
   runs: number;
@@ -209,18 +210,21 @@ const computeStats = (samples: number[]) => {
 export const runMonteCarloAnalysis = (
   circuit: CircuitState,
   options: MonteCarloOptions,
-  solve: (state: CircuitState) => SolveCircuitResult
+  solve: (state: CircuitState) => SolveCircuitResult,
+  baseDiagnostics: SolverDiagnostic[] = []
 ): { monteCarlo?: MonteCarloResult; diagnostics: SolverDiagnostic[] } => {
   if (!Number.isInteger(options.runs) || options.runs <= 0) {
     return { monteCarlo: undefined, diagnostics: [] };
   }
 
-  const diagnostics = collectMonteCarloDiagnostics(circuit);
+  const capabilityDiagnostics = getUnsupportedComponentDiagnostics(circuit, 'monteCarlo');
+  const supportedCircuit = filterCircuitByCapability(circuit, 'monteCarlo');
+  const diagnostics = [...baseDiagnostics, ...capabilityDiagnostics, ...collectMonteCarloDiagnostics(supportedCircuit)];
   const random = createRandom(options.seed);
   const collected = new Map<string, { unit: SolvedCircuitValue['unit']; samples: number[] }>();
 
   for (let run = 0; run < options.runs; run += 1) {
-    const sampledCircuit = cloneCircuit(circuit);
+    const sampledCircuit = cloneCircuit(supportedCircuit);
     for (const ref of collectMetadataRefs(sampledCircuit)) {
       ref.metadata.value = perturbValue(ref.metadata, random);
     }

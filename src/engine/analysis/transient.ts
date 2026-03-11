@@ -1,4 +1,5 @@
 import type { CircuitComponent, CircuitState, SolverDiagnostic } from '../model';
+import { filterCircuitByCapability, getUnsupportedComponentDiagnostics } from '../componentBehavior';
 
 type TrPoint = { time: number; nodeVoltages: Record<string, number> };
 
@@ -69,14 +70,17 @@ const sourceVoltageAt = (component: CircuitComponent, time: number, sourceSteps?
 };
 
 export const runTransientAnalysis = (circuit: CircuitState, options: TransientAnalysisOptions): TransientAnalysisResult => {
-  const nodeIds = circuit.nodes.filter((node) => !node.reference).map((node) => node.id);
+  const diagnostics = getUnsupportedComponentDiagnostics(circuit, 'transient');
+  const supportedCircuit = filterCircuitByCapability(circuit, 'transient');
+
+  const nodeIds = supportedCircuit.nodes.filter((node) => !node.reference).map((node) => node.id);
   const nodeMap = new Map(nodeIds.map((id, idx) => [id, idx]));
-  const voltageSources = circuit.components.filter((component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire');
+  const voltageSources = supportedCircuit.components.filter((component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire');
   const size = nodeIds.length + voltageSources.length;
 
   const capacitorState = new Map<string, number>();
   const inductorState = new Map<string, number>();
-  circuit.components.forEach((component) => {
+  supportedCircuit.components.forEach((component) => {
     if (component.catalogTypeId === 'capacitor') {
       capacitorState.set(component.id, options.initialCapacitorVoltages?.[component.id] ?? 0);
     }
@@ -111,7 +115,7 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
       if (j != null) z[j] += current;
     };
 
-    for (const component of circuit.components) {
+    for (const component of supportedCircuit.components) {
       if (component.catalogTypeId === 'resistor' && component.resistance.value) {
         stampConductance(component.from, component.to, 1 / component.resistance.value);
       } else if (component.catalogTypeId === 'current-source') {
@@ -149,12 +153,12 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
 
     const solution = solveLinearSystem(A, z);
     const nodeVoltages: Record<string, number> = {};
-    circuit.nodes.forEach((node) => {
+    supportedCircuit.nodes.forEach((node) => {
       nodeVoltages[node.id] = node.reference ? 0 : (solution[nodeMap.get(node.id) ?? -1] ?? 0);
     });
     waveform.push({ time, nodeVoltages });
 
-    for (const component of circuit.components) {
+    for (const component of supportedCircuit.components) {
       if (component.catalogTypeId === 'capacitor') {
         const v = (nodeVoltages[component.from] ?? 0) - (nodeVoltages[component.to] ?? 0);
         capacitorState.set(component.id, v);
@@ -169,5 +173,5 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
     }
   }
 
-  return { mode: 'transient', waveform, diagnostics: [] };
+  return { mode: 'transient', waveform, diagnostics };
 };

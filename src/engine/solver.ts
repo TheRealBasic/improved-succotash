@@ -15,7 +15,7 @@ import type {
   ValueConstraint,
   ValueMetadata
 } from './model';
-import { assertNever } from './componentBehavior';
+import { assertNever, filterCircuitByCapability, getUnsupportedComponentDiagnostics } from './componentBehavior';
 
 export type SolveCircuitOptions = {
   monteCarlo?: MonteCarloOptions;
@@ -775,8 +775,10 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
 };
 
 export const solveCircuit = (circuitState: CircuitState, options?: SolveCircuitOptions): SolveCircuitResult => {
-  const baseResult = solveCircuitCore(circuitState);
-  const diagnostics = [...baseResult.diagnostics];
+  const capabilityDiagnostics = getUnsupportedComponentDiagnostics(circuitState, 'dc');
+  const supportedCircuit = filterCircuitByCapability(circuitState, 'dc');
+  const baseResult = solveCircuitCore(supportedCircuit);
+  const diagnostics = [...baseResult.diagnostics, ...capabilityDiagnostics];
 
   if (options?.target) {
     const targetKey = getTargetKey(options.target);
@@ -808,7 +810,7 @@ export const solveCircuit = (circuitState: CircuitState, options?: SolveCircuitO
     return { ...baseResult, diagnostics };
   }
 
-  const monteCarloAnalysis = runMonteCarloAnalysis(circuitState, options.monteCarlo, solveCircuitCore);
+  const monteCarloAnalysis = runMonteCarloAnalysis(supportedCircuit, options.monteCarlo, solveCircuitCore, capabilityDiagnostics);
   return {
     ...baseResult,
     diagnostics: [...diagnostics, ...monteCarloAnalysis.diagnostics],
