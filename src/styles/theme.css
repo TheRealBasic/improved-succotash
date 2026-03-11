@@ -13,6 +13,20 @@ body {
   padding: 1.5rem;
 }
 
+.app-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.app-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .workspace {
   display: grid;
   gap: 1rem;

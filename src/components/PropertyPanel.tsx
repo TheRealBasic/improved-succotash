@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import type { CircuitComponent, SolveCircuitResult, Unit, ValueMetadata } from '../engine/model';
+import { useEffect, useMemo, useState } from 'react';
+import type { CircuitComponent, SolveCircuitResult, ValueMetadata } from '../engine/model';
+import { ANIMATION_MS } from '../styles/animations';
 
 const PREFIX_FACTORS = {
   '': 1,
@@ -15,6 +16,7 @@ type PropertyPanelProps = {
   selectedComponent?: CircuitComponent;
   solved: SolveCircuitResult;
   onUpdateComponentValue: (componentId: string, valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current', value: number) => void;
+  onValueApplied: () => void;
 };
 
 const formatValue = (value?: number): string => (value == null || Number.isNaN(value) ? '—' : value.toFixed(4));
@@ -42,10 +44,11 @@ const getEditableField = (
   }
 };
 
-export const PropertyPanel = ({ selectedComponent, solved, onUpdateComponentValue }: PropertyPanelProps) => {
+export const PropertyPanel = ({ selectedComponent, solved, onUpdateComponentValue, onValueApplied }: PropertyPanelProps) => {
   const editableField = getEditableField(selectedComponent);
   const [displayValue, setDisplayValue] = useState<string>('');
   const [prefix, setPrefix] = useState<Prefix>('');
+  const [isValueUpdated, setIsValueUpdated] = useState(false);
 
   const computedValues = useMemo(() => {
     if (!selectedComponent) {
@@ -80,55 +83,68 @@ export const PropertyPanel = ({ selectedComponent, solved, onUpdateComponentValu
     return undefined;
   }, [displayValue, editableField, prefix]);
 
+  useEffect(() => {
+    if (!isValueUpdated) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setIsValueUpdated(false), ANIMATION_MS.valuePulse);
+    return () => window.clearTimeout(timer);
+  }, [isValueUpdated]);
+
   return (
     <aside className="panel property-panel">
       <h2>Property Panel</h2>
 
       {!selectedComponent && <p>Select a component to edit parameters.</p>}
 
-      {selectedComponent && editableField && (
-        <div className="field-group">
-          <h3>{selectedComponent.label ?? selectedComponent.kind}</h3>
-          <label>
-            {editableField.label}
-            <div className="unit-input-row">
-              <input
-                type="number"
-                value={displayValue}
-                placeholder={String(editableField.metadata.value ?? '')}
-                onChange={(event) => setDisplayValue(event.target.value)}
-              />
-              <select value={prefix} onChange={(event) => setPrefix(event.target.value as Prefix)}>
-                <option value="">(base)</option>
-                <option value="µ">micro (µ)</option>
-                <option value="m">milli (m)</option>
-                <option value="k">kilo (k)</option>
-                <option value="M">mega (M)</option>
-              </select>
-              <span>{editableField.metadata.unit}</span>
-            </div>
-          </label>
-          <button
-            type="button"
-            disabled={validationMessage != null || displayValue.length === 0}
-            onClick={() => {
-              const numeric = Number(displayValue);
-              if (Number.isNaN(numeric)) {
-                return;
-              }
+      <div className={`field-group ${!selectedComponent || !editableField ? 'collapsed' : ''} ${isValueUpdated ? 'value-updated' : ''}`}>
+        {selectedComponent && editableField && (
+          <>
+            <h3>{selectedComponent.label ?? selectedComponent.kind}</h3>
+            <label>
+              {editableField.label}
+              <div className="unit-input-row">
+                <input
+                  type="number"
+                  value={displayValue}
+                  placeholder={String(editableField.metadata.value ?? '')}
+                  onChange={(event) => setDisplayValue(event.target.value)}
+                />
+                <select value={prefix} onChange={(event) => setPrefix(event.target.value as Prefix)}>
+                  <option value="">(base)</option>
+                  <option value="µ">micro (µ)</option>
+                  <option value="m">milli (m)</option>
+                  <option value="k">kilo (k)</option>
+                  <option value="M">mega (M)</option>
+                </select>
+                <span>{editableField.metadata.unit}</span>
+              </div>
+            </label>
+            <button
+              type="button"
+              disabled={validationMessage != null || displayValue.length === 0}
+              onClick={() => {
+                const numeric = Number(displayValue);
+                if (Number.isNaN(numeric)) {
+                  return;
+                }
 
-              onUpdateComponentValue(selectedComponent.id, editableField.key, numeric * PREFIX_FACTORS[prefix]);
-              setDisplayValue('');
-              setPrefix('');
-            }}
-          >
-            Apply
-          </button>
-          {validationMessage && <p className="validation-error">{validationMessage}</p>}
-        </div>
-      )}
+                onUpdateComponentValue(selectedComponent.id, editableField.key, numeric * PREFIX_FACTORS[prefix]);
+                setDisplayValue('');
+                setPrefix('');
+                setIsValueUpdated(true);
+                onValueApplied();
+              }}
+            >
+              Apply
+            </button>
+            {validationMessage && <p className="validation-error">{validationMessage}</p>}
+          </>
+        )}
+      </div>
 
-      <div className="computed-block">
+      <div className={`computed-block ${isValueUpdated ? 'value-updated' : ''}`}>
         <h3>Computed values</h3>
         {computedValues.length === 0 && <p className="readonly">No computed values available yet.</p>}
         {computedValues.map((entry) => (

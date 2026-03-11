@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CircuitCanvas, type CanvasComponent, type CanvasNodePosition } from './components/CircuitCanvas';
 import { PropertyPanel } from './components/PropertyPanel';
+import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
 import type { CircuitComponent, ComponentKind, SolveCircuitResult, Unit, ValueMetadata } from './engine/model';
 import { solveCircuit } from './engine/solver';
 import './styles/theme.css';
@@ -58,11 +59,16 @@ const App = () => {
   const [selectedComponentId, setSelectedComponentId] = useState<string | undefined>(initialCircuit.components[0]?.id);
   const [pendingWireFromNodeId, setPendingWireFromNodeId] = useState<string | undefined>(undefined);
   const [solved, setSolved] = useState<SolveCircuitResult>({ values: {}, diagnostics: [] });
+  const [simulationActive, setSimulationActive] = useState(false);
+  const [sfxSettings, setSfxSettings] = useState(getSfxSettings());
+  const [audioBlocked, setAudioBlocked] = useState(isSfxBlocked());
 
   const selectedComponent = useMemo(
     () => circuit.components.find((component) => component.id === selectedComponentId),
     [circuit.components, selectedComponentId]
   );
+
+  useEffect(() => subscribeToSfxSettings(setSfxSettings), []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -81,6 +87,10 @@ const App = () => {
     return () => window.clearTimeout(timer);
   }, [circuit]);
 
+  const tryUnlockAudio = () => {
+    unlockSfx().finally(() => setAudioBlocked(isSfxBlocked()));
+  };
+
   const addComponentAt = (kind: Exclude<ComponentKind, 'wire'>, x: number, y: number) => {
     setCircuit((current) => {
       const baseId = `${kind}-${Date.now()}`;
@@ -95,6 +105,7 @@ const App = () => {
         components: [...current.components, componentFactory(kind, baseId, fromNodeId, toNodeId)]
       };
     });
+    playSfx('place');
   };
 
   const moveNode = (nodeId: string, x: number, y: number) => {
@@ -105,6 +116,11 @@ const App = () => {
   };
 
   const deleteSelected = () => {
+    if (!selectedComponentId && !selectedNodeId) {
+      playSfx('error');
+      return;
+    }
+
     setCircuit((current) => {
       if (selectedComponentId) {
         return {
@@ -130,11 +146,13 @@ const App = () => {
   const startOrCompleteWire = (nodeId: string) => {
     if (!pendingWireFromNodeId) {
       setPendingWireFromNodeId(nodeId);
+      playSfx('start');
       return;
     }
 
     if (pendingWireFromNodeId === nodeId) {
       setPendingWireFromNodeId(undefined);
+      playSfx('stop');
       return;
     }
 
@@ -151,6 +169,7 @@ const App = () => {
         }
       ]
     }));
+    playSfx('connect');
     setPendingWireFromNodeId(undefined);
   };
 
@@ -188,8 +207,28 @@ const App = () => {
   };
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" onPointerDown={tryUnlockAudio}>
       <h1>Circuit Workbench</h1>
+      <div className="app-controls panel">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !simulationActive;
+            setSimulationActive(next);
+            playSfx(next ? 'start' : 'stop');
+          }}
+        >
+          {simulationActive ? 'Stop Simulation' : 'Start Simulation'}
+        </button>
+        <label>
+          SFX Volume: {Math.round(sfxSettings.volume * 100)}%
+          <input type="range" min={0} max={100} value={Math.round(sfxSettings.volume * 100)} onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
+        </label>
+        <button type="button" onClick={toggleSfxMute}>
+          {sfxSettings.muted ? 'Unmute SFX' : 'Mute SFX'}
+        </button>
+        {audioBlocked && <p className="hint">Audio is blocked by autoplay policy until user interaction.</p>}
+      </div>
       <section className="workspace">
         <CircuitCanvas
           nodes={circuit.nodes}
@@ -197,6 +236,7 @@ const App = () => {
           selectedNodeId={selectedNodeId}
           selectedComponentId={selectedComponentId}
           pendingWireFromNodeId={pendingWireFromNodeId}
+          simulationActive={simulationActive}
           onAddComponentAt={addComponentAt}
           onMoveNode={moveNode}
           onDeleteSelected={deleteSelected}
@@ -210,7 +250,7 @@ const App = () => {
           }}
           onStartOrCompleteWire={startOrCompleteWire}
         />
-        <PropertyPanel selectedComponent={selectedComponent} solved={solved} onUpdateComponentValue={updateComponentValue} />
+        <PropertyPanel selectedComponent={selectedComponent} solved={solved} onUpdateComponentValue={updateComponentValue} onValueApplied={() => playSfx('connect')} />
       </section>
     </main>
   );
