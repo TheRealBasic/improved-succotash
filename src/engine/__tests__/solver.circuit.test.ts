@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getDiagnosticGuidance, solveCircuit, solveCircuitForTarget } from '../solver';
 import { simulateStep } from '../simulation';
 import type { CircuitState } from '../model';
+import { COMPONENT_CIRCUIT_FIXTURES } from './fixtures/components/circuitFixtures';
 
 describe('solveCircuit canonical networks', () => {
   it('solves a canonical voltage-divider-like network branch currents', () => {
@@ -278,88 +279,21 @@ describe('solveCircuit target solving', () => {
   });
 });
 
-describe('extended component family canonical circuits', () => {
-  const baseNodes = [{ id: 'gnd', reference: true }, { id: 'n1' }] as const;
 
-  it('supports diode canonical DC path', () => {
-    const result = solveCircuit({
-      nodes: [...baseNodes],
-      components: [
-        { id: 'vs', kind: 'source2p',
-        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'd1', kind: 'switch',
-        catalogTypeId: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.7, known: true, computed: false, unit: 'V' }, onResistance: { value: 10, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 1e6, known: true, computed: false, unit: 'Ω' } }
-      ]
-    });
-    expect(result.values['component:d1:current']?.value).toBeTypeOf('number');
-  });
+describe('fixture-driven component family circuits', () => {
+  it.each(COMPONENT_CIRCUIT_FIXTURES)('solves fixture $name', ({ circuit, expectations }) => {
+    const result = solveCircuit(circuit);
 
-  it('supports bjt canonical DC path', () => {
-    const result = solveCircuit({
-      nodes: [...baseNodes],
-      components: [
-        { id: 'vs', kind: 'source2p',
-        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'q1', kind: 'switch',
-        catalogTypeId: 'bjt', from: 'n1', to: 'gnd', beta: { value: 100, known: true, computed: false, unit: 'A' }, vbeOn: { value: 0.7, known: true, computed: false, unit: 'V' } }
-      ]
-    });
-    expect(result.values['component:q1:current']?.value).toBeTypeOf('number');
-  });
+    for (const code of expectations.diagnosticCodes ?? []) {
+      expect(result.diagnostics.some((diagnostic) => diagnostic.code === code)).toBe(true);
+    }
 
-  it('supports mosfet canonical DC path', () => {
-    const result = solveCircuit({
-      nodes: [...baseNodes],
-      components: [
-        { id: 'vs', kind: 'source2p',
-        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'm1', kind: 'switch',
-        catalogTypeId: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 5, known: true, computed: false, unit: 'Ω' } }
-      ]
-    });
-    expect(result.values['component:m1:current']?.value).toBeTypeOf('number');
-  });
-
-  it('supports op-amp canonical output clamp', () => {
-    const result = solveCircuit({
-      nodes: [...baseNodes],
-      components: [
-        { id: 'vs', kind: 'source2p',
-        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 1, known: true, computed: false, unit: 'V' } },
-        { id: 'u1', kind: 'amplifier',
-        catalogTypeId: 'op-amp', from: 'n1', to: 'gnd', gain: { value: 1e5, known: true, computed: false, unit: 'V' }, outputLimitHigh: { value: 12, known: true, computed: false, unit: 'V' }, outputLimitLow: { value: -12, known: true, computed: false, unit: 'V' } }
-      ]
-    });
-    expect(result.values['component:u1:output']?.value).toBeTypeOf('number');
-  });
-
-  it('supports logic gate mixed-signal bridge', () => {
-    const result = solveCircuit({
-      nodes: [...baseNodes],
-      components: [
-        { id: 'vs', kind: 'source2p',
-        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'g1', kind: 'digital',
-        catalogTypeId: 'logic-gate', from: 'n1', to: 'gnd', gateType: 'not', bridge: { highThreshold: { value: 3, known: true, computed: false, unit: 'V' }, lowThreshold: { value: 1, known: true, computed: false, unit: 'V' }, highLevel: { value: 5, known: true, computed: false, unit: 'V' }, lowLevel: { value: 0, known: true, computed: false, unit: 'V' } } }
-      ]
-    });
-    expect(result.values['component:g1:logic_output']?.value).toBeTypeOf('number');
-  });
-
-  it('includes source non-ideal internal resistance/ripple effects', () => {
-    const result = solveCircuit({
-      nodes: [...baseNodes],
-      components: [
-        { id: 'vs', kind: 'source2p',
-        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' }, nonIdeal: { internalResistance: { value: 1, known: true, computed: false, unit: 'Ω' }, rippleAmplitude: { value: 0.2, known: true, computed: false, unit: 'V' }, rippleFrequencyHz: { value: 120, known: true, computed: false, unit: 'Hz' } } },
-        { id: 'r1', kind: 'passive2p',
-        catalogTypeId: 'resistor', from: 'n1', to: 'gnd', resistance: { value: 10, known: true, computed: false, unit: 'Ω' } }
-      ]
-    });
-    expect(result.values['component:r1:current']?.value).toBeTypeOf('number');
+    for (const key of expectations.valueKeys ?? []) {
+      expect(result.values[key]).toBeDefined();
+      expect(result.values[key]?.value).toBeTypeOf('number');
+    }
   });
 });
-
 
 describe('monte carlo capability gating', () => {
   it('runs Monte Carlo for supported components without unsupported diagnostics', () => {

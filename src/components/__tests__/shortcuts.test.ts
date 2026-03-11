@@ -80,4 +80,25 @@ describe('component catalog metadata validation', () => {
 
     expect(() => validateComponentCatalog(items)).toThrow(/Duplicate alias/i);
   });
+
+  it('catches duplicate ids, invalid categories, and malformed property schema fields', () => {
+    const duplicateA = buildCatalogItem('duplicate-id');
+    const duplicateB = buildCatalogItem('duplicate-id');
+    const invalidCategory = {
+      ...buildCatalogItem('invalid-category'),
+      category: 'invalid-category' as ComponentCatalogItem['category']
+    };
+    const missingSchemaLabel = {
+      ...buildCatalogItem('missing-schema-label'),
+      editablePropertySchema: {
+        resistance: {
+          type: 'number'
+        } as unknown as ComponentCatalogItem['editablePropertySchema'][string]
+      }
+    };
+
+    expect(() => validateComponentCatalog([duplicateA, duplicateB, invalidCategory, missingSchemaLabel])).toThrow(
+      /Duplicate component catalog id|Invalid category|must include a string label/i
+    );
+  });
 });

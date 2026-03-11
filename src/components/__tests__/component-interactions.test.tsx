@@ -3,6 +3,7 @@ import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CircuitCanvas } from '../CircuitCanvas';
+import { ComponentLibrarySidebar } from '../ComponentLibrarySidebar';
 import { PropertyPanel } from '../PropertyPanel';
 import type { CircuitComponent, SolveCircuitResult } from '../../engine/model';
 
@@ -242,5 +243,126 @@ describe('PropertyPanel updates and rendering', () => {
     expect(screen.getByText(/suggested fix:/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /jump to kcl:n1/i }));
     expect(onJumpToEquationRow).toHaveBeenCalledWith('kcl:n1');
+  });
+});
+
+
+describe('catalog smoke workflows', () => {
+  it('supports searching across many catalog entries', () => {
+    render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
+
+    const search = screen.getByPlaceholderText(/name, alias, tag, part/i);
+    const queries = [
+      { query: 'resistor', expected: 'Resistor' },
+      { query: 'ne555', expected: 'Timer IC (NE555)' },
+      { query: '74hc00', expected: 'Quad NAND (74HC00)' },
+      { query: 'ad9833', expected: 'DDS Signal Generator (AD9833)' }
+    ];
+
+    for (const { query, expected } of queries) {
+      fireEvent.change(search, { target: { value: query } });
+      expect(screen.getByText(expected)).toBeTruthy();
+    }
+  });
+
+  it('supports placement drops for many catalog component kinds', () => {
+    const onAddComponentAt = vi.fn();
+    const { container } = render(
+      <CircuitCanvas
+        nodes={[
+          { id: 'n1', x: 120, y: 140, reference: true },
+          { id: 'gnd', x: 260, y: 140 }
+        ]}
+        components={[]}
+        simulationActive={false}
+        rerouteWiresOnMove
+        onAddComponentAt={onAddComponentAt}
+        onAddSubcircuitAt={vi.fn()}
+        onSelectNode={vi.fn()}
+        onSelectComponent={vi.fn()}
+        onMoveNode={vi.fn()}
+        onStartOrCompleteWire={vi.fn()}
+      />
+    );
+
+    const surface = container.querySelector('svg.canvas-surface');
+    expect(surface).toBeTruthy();
+
+    Object.defineProperty(surface!, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, right: 900, bottom: 600, width: 900, height: 600, x: 0, y: 0, toJSON: () => ({}) })
+    });
+
+    for (const kind of ['resistor', 'capacitor', 'voltage-source', 'diode', 'logic-gate']) {
+      fireEvent.drop(surface!, {
+        preventDefault: vi.fn(),
+        clientX: 130,
+        clientY: 150,
+        currentTarget: surface,
+        dataTransfer: makeDataTransfer(kind)
+      });
+    }
+
+    expect(onAddComponentAt).toHaveBeenCalledTimes(5);
+    expect(onAddComponentAt.mock.calls.map((call) => call[0])).toEqual(['resistor', 'capacitor', 'voltage-source', 'diode', 'logic-gate']);
+  });
+
+  it.each([
+    {
+      component: {
+        id: 'r1',
+        kind: 'passive2p',
+        catalogTypeId: 'resistor',
+        from: 'n1',
+        to: 'gnd',
+        resistance: { value: 10, known: true, computed: false, unit: 'Ω' }
+      } as CircuitComponent,
+      input: '470',
+      expectedProperty: 'resistance',
+      expectedValue: 470
+    },
+    {
+      component: {
+        id: 'c1',
+        kind: 'passive2p',
+        catalogTypeId: 'capacitor',
+        from: 'n1',
+        to: 'gnd',
+        capacitance: { value: 1e-6, known: true, computed: false, unit: 'F' }
+      } as CircuitComponent,
+      input: '22u',
+      expectedProperty: 'capacitance',
+      expectedValue: 22e-6
+    },
+    {
+      component: {
+        id: 'vs1',
+        kind: 'source2p',
+        catalogTypeId: 'voltage-source',
+        from: 'n1',
+        to: 'gnd',
+        voltage: { value: 5, known: true, computed: false, unit: 'V' }
+      } as CircuitComponent,
+      input: '12',
+      expectedProperty: 'voltage',
+      expectedValue: 12
+    }
+  ])('supports property editing for $component.catalogTypeId', ({ component, input, expectedProperty, expectedValue }) => {
+    const onUpdate = vi.fn();
+    const { container } = render(
+      <PropertyPanel
+        selectedComponent={component}
+        solved={{ values: {}, diagnostics: [] }}
+        selectedTarget={{ type: 'component_value', componentId: component.id }}
+        onChangeSelectedTarget={vi.fn()}
+        onSolveForTarget={vi.fn()}
+        onUpdateComponentProperty={onUpdate}
+        onValueApplied={vi.fn()}
+      />
+    );
+
+    fireEvent.change(within(container).getAllByRole('textbox')[0], { target: { value: input } });
+    fireEvent.click(within(container).getAllByRole('button', { name: 'Apply' })[0]);
+
+    expect(onUpdate).toHaveBeenCalledWith(component.id, expectedProperty, expectedValue);
   });
 });
