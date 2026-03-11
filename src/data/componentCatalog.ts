@@ -1,6 +1,6 @@
-import type { ComponentKind } from '../engine/model';
+import type { ComponentCatalogTypeId } from '../engine/model';
 
-export type CatalogPlacementKind = Exclude<ComponentKind, 'wire'> | 'subcircuit';
+export type CatalogPlacementKind = ComponentCatalogTypeId | 'subcircuit';
 
 export const COMPONENT_CATEGORY_ORDER = [
   'passive',
@@ -69,7 +69,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'voltage-source',
     displayName: 'Voltage Source',
-    kind: 'voltageSource',
+    kind: 'voltage-source',
     category: 'sources',
     subcategory: 'dc',
     description: 'Ideal two-terminal voltage source.',
@@ -80,7 +80,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'current-source',
     displayName: 'Current Source',
-    kind: 'currentSource',
+    kind: 'current-source',
     category: 'sources',
     subcategory: 'dc',
     description: 'Ideal two-terminal current source.',
@@ -124,7 +124,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'op-amp',
     displayName: 'Op-Amp',
-    kind: 'opAmp',
+    kind: 'op-amp',
     category: 'ics',
     subcategory: 'generic',
     description: 'Generic operational amplifier macro model.',
@@ -135,7 +135,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'logic-gate',
     displayName: 'Logic Gate',
-    kind: 'logicGate',
+    kind: 'logic-gate',
     category: 'ics',
     subcategory: 'generic',
     description: 'Generic digital logic gate.',
@@ -146,7 +146,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'ne555',
     displayName: 'Timer IC (NE555)',
-    kind: 'opAmp',
+    kind: 'op-amp',
     category: 'timing',
     subcategory: 'timer',
     description: 'Classic NE555 timer for astable/monostable pulse generation.',
@@ -160,7 +160,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'lm358',
     displayName: 'Dual Op-Amp (LM358)',
-    kind: 'opAmp',
+    kind: 'op-amp',
     category: 'ics',
     subcategory: 'precision-analog',
     description: 'Dual operational amplifier suitable for single-supply designs.',
@@ -174,7 +174,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: '74hc00',
     displayName: 'Quad NAND (74HC00)',
-    kind: 'logicGate',
+    kind: 'logic-gate',
     category: 'interface',
     subcategory: 'logic-family',
     description: 'Quad 2-input NAND gate in HC CMOS family.',
@@ -188,7 +188,7 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   {
     id: 'ad9833',
     displayName: 'DDS Signal Generator (AD9833)',
-    kind: 'logicGate',
+    kind: 'logic-gate',
     category: 'rf',
     subcategory: 'signal-synthesis',
     description: 'Direct digital synthesis IC for low-power waveform generation.',

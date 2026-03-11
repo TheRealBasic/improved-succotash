@@ -19,14 +19,16 @@ describe('solveCircuit', () => {
       components: [
         {
           id: 'vs1',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 10, known: true, computed: false, unit: 'V' }
         },
         {
           id: 'r1',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: { value: 5, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
@@ -52,7 +54,8 @@ describe('solveCircuit', () => {
       components: [
         {
           id: 'c1',
-          kind: 'capacitor',
+          kind: 'passive2p',
+        catalogTypeId: 'capacitor',
           from: 'n1',
           to: 'gnd',
           capacitance: { value: 1e-6, known: true, computed: false, unit: 'F' }
@@ -73,14 +76,16 @@ describe('solveCircuit', () => {
       components: [
         {
           id: 'vs1',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 10, known: true, computed: false, unit: 'V' }
         },
         {
           id: 'r1',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: {
@@ -111,7 +116,8 @@ describe('solveCircuit', () => {
       components: [
         {
           id: 'is1',
-          kind: 'currentSource',
+          kind: 'source2p',
+        catalogTypeId: 'current-source',
           from: 'gnd',
           to: 'gnd',
           current: {

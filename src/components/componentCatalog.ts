@@ -63,7 +63,7 @@ const resolveSidebarPath = (item: ComponentCatalogItem): { categoryId: string; s
     return { categoryId: 'ics', subcategoryId: 'timers' };
   }
 
-  if (item.category === 'ics' && (item.tags.includes('analog') || item.kind === 'opAmp')) {
+  if (item.category === 'ics' && (item.tags.includes('analog') || item.kind === 'op-amp')) {
     return { categoryId: 'ics', subcategoryId: 'op-amps' };
   }
 

@@ -37,20 +37,20 @@ const getEditableFields = (
     return [];
   }
 
-  switch (component.kind) {
+  switch (component.catalogTypeId) {
     case 'resistor':
       return [{ key: 'resistance', label: 'Resistance', metadata: component.resistance }];
     case 'capacitor':
       return [{ key: 'capacitance', label: 'Capacitance', metadata: component.capacitance }];
     case 'inductor':
       return [{ key: 'inductance', label: 'Inductance', metadata: component.inductance }];
-    case 'voltageSource':
+    case 'voltage-source':
       return [
         { key: 'voltage', label: 'Voltage', metadata: component.voltage },
         ...(component.nonIdeal?.internalResistance ? [{ key: 'internalResistance' as const, label: 'Internal resistance', metadata: component.nonIdeal.internalResistance }] : []),
         ...(component.nonIdeal?.rippleAmplitude ? [{ key: 'rippleAmplitude' as const, label: 'Ripple amplitude', metadata: component.nonIdeal.rippleAmplitude }] : [])
       ];
-    case 'currentSource':
+    case 'current-source':
       return [
         { key: 'current', label: 'Current', metadata: component.current },
         ...(component.nonIdeal?.internalResistance ? [{ key: 'internalResistance' as const, label: 'Internal resistance', metadata: component.nonIdeal.internalResistance }] : []),
@@ -62,9 +62,9 @@ const getEditableFields = (
       return [{ key: 'beta', label: 'Beta', metadata: component.beta }];
     case 'mosfet':
       return [{ key: 'thresholdVoltage', label: 'Threshold voltage', metadata: component.thresholdVoltage }];
-    case 'opAmp':
+    case 'op-amp':
       return [{ key: 'gain', label: 'Open-loop gain', metadata: component.gain }];
-    case 'logicGate':
+    case 'logic-gate':
       return [{ key: 'highThreshold', label: 'Logic high threshold', metadata: component.bridge.highThreshold }];
     default:
       return [];

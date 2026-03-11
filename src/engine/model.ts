@@ -18,17 +18,19 @@ export type ValueMetadata = {
   operatingTempC?: number;
 };
 
-export type ComponentKind =
+export type ComponentKind = 'passive2p' | 'source2p' | 'switch' | 'amplifier' | 'digital' | 'sensor';
+
+export type ComponentCatalogTypeId =
   | 'resistor'
   | 'capacitor'
   | 'inductor'
-  | 'voltageSource'
-  | 'currentSource'
+  | 'voltage-source'
+  | 'current-source'
   | 'diode'
   | 'bjt'
   | 'mosfet'
-  | 'opAmp'
-  | 'logicGate'
+  | 'op-amp'
+  | 'logic-gate'
   | 'wire';
 
 export type LogicGateType = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor';
@@ -56,6 +58,7 @@ export type CircuitNode = {
 export type ComponentBase = {
   id: string;
   kind: ComponentKind;
+  catalogTypeId: ComponentCatalogTypeId;
   from: string;
   to: string;
   label?: string;
@@ -80,67 +83,79 @@ export type SubcircuitDefinition = {
 };
 
 export type ResistorComponent = ComponentBase & {
-  kind: 'resistor';
+  kind: 'passive2p';
+  catalogTypeId: 'resistor';
   resistance: ValueMetadata;
 };
 
 export type CapacitorComponent = ComponentBase & {
-  kind: 'capacitor';
+  kind: 'passive2p';
+  catalogTypeId: 'capacitor';
   capacitance: ValueMetadata;
 };
 
 export type InductorComponent = ComponentBase & {
-  kind: 'inductor';
+  kind: 'passive2p';
+  catalogTypeId: 'inductor';
   inductance: ValueMetadata;
 };
 
 export type VoltageSourceComponent = ComponentBase & {
-  kind: 'voltageSource';
+  kind: 'source2p';
+  catalogTypeId: 'voltage-source';
   voltage: ValueMetadata;
   nonIdeal?: SourceNonIdeal;
 };
 
 export type CurrentSourceComponent = ComponentBase & {
-  kind: 'currentSource';
+  kind: 'source2p';
+  catalogTypeId: 'current-source';
   current: ValueMetadata;
   nonIdeal?: SourceNonIdeal;
 };
 
 export type DiodeComponent = ComponentBase & {
-  kind: 'diode';
+  kind: 'switch';
+  catalogTypeId: 'diode';
   forwardDrop: ValueMetadata;
   onResistance: ValueMetadata;
   offResistance: ValueMetadata;
 };
 
 export type BjtComponent = ComponentBase & {
-  kind: 'bjt';
+  kind: 'switch';
+  catalogTypeId: 'bjt';
   beta: ValueMetadata;
   vbeOn: ValueMetadata;
 };
 
 export type MosfetComponent = ComponentBase & {
-  kind: 'mosfet';
+  kind: 'switch';
+  catalogTypeId: 'mosfet';
   thresholdVoltage: ValueMetadata;
   onResistance: ValueMetadata;
 };
 
 export type OpAmpComponent = ComponentBase & {
-  kind: 'opAmp';
+  kind: 'amplifier';
+  catalogTypeId: 'op-amp';
   gain: ValueMetadata;
   outputLimitHigh: ValueMetadata;
   outputLimitLow: ValueMetadata;
 };
 
 export type LogicGateComponent = ComponentBase & {
-  kind: 'logicGate';
+  kind: 'digital';
+  catalogTypeId: 'logic-gate';
   gateType: LogicGateType;
   bridge: LogicLevelBridge;
 };
 
 export type WireComponent = ComponentBase & {
-  kind: 'wire';
+  kind: 'passive2p';
+  catalogTypeId: 'wire';
 };
+
 
 export type CircuitComponent =
   | ResistorComponent

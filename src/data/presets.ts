@@ -18,7 +18,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
     components: [
       {
         id: 'src-1',
-        kind: 'voltageSource',
+        kind: 'source2p',
+        catalogTypeId: 'voltage-source',
         from: 'n-a',
         to: 'n-ref',
         label: 'V1',
@@ -35,7 +36,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
     components: [
       {
         id: 'vd-v1',
-        kind: 'voltageSource',
+        kind: 'source2p',
+        catalogTypeId: 'voltage-source',
         from: 'n-top',
         to: 'n-ref',
         label: 'V1',
@@ -43,7 +45,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
       },
       {
         id: 'vd-r1',
-        kind: 'resistor',
+        kind: 'passive2p',
+        catalogTypeId: 'resistor',
         from: 'n-top',
         to: 'n-mid',
         label: 'R1',
@@ -51,7 +54,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
       },
       {
         id: 'vd-r2',
-        kind: 'resistor',
+        kind: 'passive2p',
+        catalogTypeId: 'resistor',
         from: 'n-mid',
         to: 'n-ref',
         label: 'R2',
@@ -67,7 +71,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
     components: [
       {
         id: 'cl-i1',
-        kind: 'currentSource',
+        kind: 'source2p',
+        catalogTypeId: 'current-source',
         from: 'n-right',
         to: 'n-ref',
         label: 'I1',
@@ -75,7 +80,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
       },
       {
         id: 'cl-r1',
-        kind: 'resistor',
+        kind: 'passive2p',
+        catalogTypeId: 'resistor',
         from: 'n-right',
         to: 'n-ref',
         label: 'R1',

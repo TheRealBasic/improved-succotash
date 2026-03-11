@@ -15,6 +15,7 @@ import type {
   ValueConstraint,
   ValueMetadata
 } from './model';
+import { assertNever } from './componentBehavior';
 
 export type SolveCircuitOptions = {
   monteCarlo?: MonteCarloOptions;
@@ -64,30 +65,30 @@ const diagnosticGuidanceByCode: Partial<Record<SolverDiagnostic['code'], Diagnos
 export const getDiagnosticGuidance = (diagnostic: SolverDiagnostic): DiagnosticGuidance | undefined =>
   diagnosticGuidanceByCode[diagnostic.code];
 
-const componentUnits: Partial<Record<CircuitComponent['kind'], Unit>> = {
+const componentUnits: Partial<Record<CircuitComponent['catalogTypeId'], Unit>> = {
   resistor: 'Ω',
   capacitor: 'F',
   inductor: 'H',
-  voltageSource: 'V',
-  currentSource: 'A',
+  'voltage-source': 'V',
+  'current-source': 'A',
   diode: 'V',
   bjt: 'A',
   mosfet: 'V',
-  opAmp: 'V',
-  logicGate: 'V'
+  'op-amp': 'V',
+  'logic-gate': 'V'
 };
 
 const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata | undefined => {
-  switch (component.kind) {
+  switch (component.catalogTypeId) {
     case 'resistor':
       return component.resistance;
     case 'capacitor':
       return component.capacitance;
     case 'inductor':
       return component.inductance;
-    case 'voltageSource':
+    case 'voltage-source':
       return component.voltage;
-    case 'currentSource':
+    case 'current-source':
       return component.current;
     case 'diode':
       return component.forwardDrop;
@@ -95,10 +96,12 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
       return component.beta;
     case 'mosfet':
       return component.thresholdVoltage;
-    case 'opAmp':
+    case 'op-amp':
       return component.gain;
-    case 'logicGate':
+    case 'logic-gate':
       return component.bridge.highThreshold;
+    case 'wire':
+      return undefined;
     default:
       return undefined;
   }
@@ -147,14 +150,14 @@ const validateCircuit = (circuit: CircuitState): SolverDiagnostic[] => {
       });
     }
 
-    const expectedUnit = componentUnits[component.kind];
+    const expectedUnit = componentUnits[component.catalogTypeId];
     if (expectedUnit != null) {
       const valueMetadata = getComponentValueMetadata(component);
       if (valueMetadata == null || valueMetadata.value == null) {
         diagnostics.push({
           code: 'missing_constitutive_value',
           severity: 'error',
-          message: `Component ${component.id} is missing a required ${component.kind} value.`,
+          message: `Component ${component.id} is missing a required ${component.catalogTypeId} value.`,
           componentId: component.id
         });
         continue;
@@ -278,7 +281,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
     .filter((id) => !knownNodeVoltages.has(id) && !referenceNodeIds.has(id));
 
   const voltageConstraintComponents = circuit.components.filter(
-    (component) => component.kind === 'voltageSource' || component.kind === 'wire' || component.kind === 'inductor'
+    (component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor'
   );
 
   const sourceCurrentVarIds = voltageConstraintComponents.map((component) => component.id);
@@ -310,7 +313,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
     const rowConstants: EquationTraceConstant[] = [];
 
     for (const component of circuit.components) {
-      if (component.kind === 'resistor') {
+      if (component.catalogTypeId === 'resistor') {
         const resistance = component.resistance.value;
         if (resistance == null || resistance === 0) {
           continue;
@@ -367,7 +370,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             description: `${component.id} known voltage on ${selfNode}`
           });
         }
-      } else if (component.kind === 'diode') {
+      } else if (component.catalogTypeId === 'diode') {
         const vd = component.forwardDrop.value ?? 0.7;
         const ron = component.onResistance.value ?? 10;
         const roff = component.offResistance.value ?? 1e6;
@@ -385,7 +388,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             addCoefficient(row, `V:${component.to}`, -sign * conductance);
           }
         }
-      } else if (component.kind === 'bjt') {
+      } else if (component.catalogTypeId === 'bjt') {
         const beta = component.beta.value ?? 100;
         const rb = 1000 / Math.max(beta, 1e-9);
         const conductance = 1 / rb;
@@ -396,7 +399,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           addCoefficient(row, `V:${component.from}`, sign * conductance);
           addCoefficient(row, `V:${component.to}`, -sign * conductance);
         }
-      } else if (component.kind === 'mosfet') {
+      } else if (component.catalogTypeId === 'mosfet') {
         const r = component.onResistance.value ?? 5;
         const g = r === 0 ? 1e9 : 1 / r;
         const isFrom = component.from === nodeId;
@@ -406,7 +409,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           addCoefficient(row, `V:${component.from}`, sign * g);
           addCoefficient(row, `V:${component.to}`, -sign * g);
         }
-      } else if (component.kind === 'opAmp') {
+      } else if (component.catalogTypeId === 'op-amp') {
         const gain = component.gain.value ?? 1e5;
         const g = Math.min(Math.abs(gain), 1e6) / 1e6;
         const isFrom = component.from === nodeId;
@@ -416,7 +419,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           addCoefficient(row, `V:${component.from}`, sign * g);
           addCoefficient(row, `V:${component.to}`, -sign * g);
         }
-      } else if (component.kind === 'logicGate') {
+      } else if (component.catalogTypeId === 'logic-gate') {
         const threshold = component.bridge.highThreshold.value ?? 2.5;
         const high = component.bridge.highLevel.value ?? 5;
         const low = component.bridge.lowLevel.value ?? 0;
@@ -425,7 +428,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
         if (component.to === nodeId) {
           rhs += outV;
         }
-      } else if (component.kind === 'currentSource') {
+      } else if (component.catalogTypeId === 'current-source') {
         const baseCurrent = component.current.value ?? 0;
         const ripple = component.nonIdeal?.rippleAmplitude?.value ?? 0;
         const current = baseCurrent + ripple;
@@ -437,8 +440,8 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           rhs += current;
           rowConstants.push({ componentId: component.id, value: current, description: `${component.id} source current entering ${nodeId}` });
         }
-      } else if (component.kind === 'voltageSource' || component.kind === 'wire' || component.kind === 'inductor') {
-        if (component.kind === 'voltageSource' && (component.nonIdeal?.internalResistance?.value ?? 0) > 0) {
+      } else if (component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor') {
+        if (component.catalogTypeId === 'voltage-source' && (component.nonIdeal?.internalResistance?.value ?? 0) > 0) {
           const r = component.nonIdeal?.internalResistance?.value ?? 0;
           const g = 1 / r;
           const isFrom = component.from === nodeId;
@@ -461,7 +464,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             rowTerms.push({ componentId: component.id, variableKey: `I:${component.id}`, coefficient: contribution, description: `${component.id} branch current entering ${nodeId}` });
           }
         }
-      } else if (component.kind === 'capacitor') {
+      } else if (component.catalogTypeId === 'capacitor') {
         diagnostics.push({
           code: 'unsupported_component_behavior',
           severity: 'warning',
@@ -486,7 +489,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
 
   for (const component of voltageConstraintComponents) {
     const row = new Array<number>(unknownCount).fill(0);
-    const sourceVoltage = component.kind === 'voltageSource' ? (component.voltage.value ?? 0) : 0;
+    const sourceVoltage = component.catalogTypeId === 'voltage-source' ? (component.voltage.value ?? 0) : 0;
     const rowTerms: EquationTraceTerm[] = [];
     const rowConstants: EquationTraceConstant[] = [];
 
@@ -612,7 +615,7 @@ const findConflictingIdealVoltageSources = (circuitState: CircuitState): SolverD
   const grouped = new Map<string, Array<{ id: string; value: number }>>();
 
   for (const component of circuitState.components) {
-    if (component.kind !== 'voltageSource') {
+    if (component.catalogTypeId !== 'voltage-source') {
       continue;
     }
     const value = component.voltage.value;
@@ -708,7 +711,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
     const drop = from - to;
     values[`component:${component.id}:voltage`] = toSolvedValue(`component:${component.id}:voltage`, 'V', drop, false, true);
 
-    if (component.kind === 'resistor' && component.resistance.value != null && component.resistance.value !== 0) {
+    if (component.catalogTypeId === 'resistor' && component.resistance.value != null && component.resistance.value !== 0) {
       const current = drop / component.resistance.value;
       values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', current, false, true);
       values[`component:${component.id}:resistance`] = toSolvedValue(
@@ -720,34 +723,34 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       );
     }
 
-    if (component.kind === 'diode') {
+    if (component.catalogTypeId === 'diode') {
       const r = Math.max(component.onResistance.value ?? 10, 1e-6);
       values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
     }
 
-    if (component.kind === 'bjt') {
+    if (component.catalogTypeId === 'bjt') {
       const r = Math.max(1000 / Math.max(component.beta.value ?? 100, 1e-6), 1e-6);
       values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
     }
 
-    if (component.kind === 'mosfet') {
+    if (component.catalogTypeId === 'mosfet') {
       const r = Math.max(component.onResistance.value ?? 5, 1e-6);
       values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
     }
 
-    if (component.kind === 'opAmp') {
+    if (component.catalogTypeId === 'op-amp') {
       const hi = component.outputLimitHigh.value ?? 12;
       const lo = component.outputLimitLow.value ?? -12;
       const out = Math.min(hi, Math.max(lo, (component.gain.value ?? 1) * drop));
       values[`component:${component.id}:output`] = toSolvedValue(`component:${component.id}:output`, 'V', out, false, true);
     }
 
-    if (component.kind === 'logicGate') {
+    if (component.catalogTypeId === 'logic-gate') {
       const v = drop >= (component.bridge.highThreshold.value ?? 2.5) ? (component.bridge.highLevel.value ?? 5) : (component.bridge.lowLevel.value ?? 0);
       values[`component:${component.id}:logic_output`] = toSolvedValue(`component:${component.id}:logic_output`, 'V', v, false, true);
     }
 
-    if (component.kind === 'currentSource') {
+    if (component.catalogTypeId === 'current-source') {
       values[`component:${component.id}:current`] = toSolvedValue(
         `component:${component.id}:current`,
         'A',
@@ -757,7 +760,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       );
     }
 
-    if (component.kind === 'voltageSource') {
+    if (component.catalogTypeId === 'voltage-source') {
       values[`component:${component.id}:voltage`] = toSolvedValue(
         `component:${component.id}:voltage`,
         'V',

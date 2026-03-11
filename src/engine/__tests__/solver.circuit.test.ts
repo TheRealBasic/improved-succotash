@@ -10,21 +10,24 @@ describe('solveCircuit canonical networks', () => {
       components: [
         {
           id: 'vs',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 12, known: true, computed: false, unit: 'V' }
         },
         {
           id: 'r1',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'n2',
           resistance: { value: 4, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
         },
         {
           id: 'r2',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n2',
           to: 'gnd',
           resistance: { value: 2, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
@@ -47,21 +50,24 @@ describe('solveCircuit canonical networks', () => {
       components: [
         {
           id: 'vs',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 12, known: true, computed: false, unit: 'V' }
         },
         {
           id: 'r1',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: { value: 6, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
         },
         {
           id: 'r2',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: { value: 3, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
@@ -84,7 +90,8 @@ describe('solveCircuit diagnostics', () => {
       components: [
         {
           id: 'c1',
-          kind: 'capacitor',
+          kind: 'passive2p',
+        catalogTypeId: 'capacitor',
           from: 'n1',
           to: 'gnd',
           capacitance: { value: 2e-6, known: true, computed: false, unit: 'F' }
@@ -103,14 +110,16 @@ describe('solveCircuit diagnostics', () => {
       components: [
         {
           id: 'vs-5',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 5, known: true, computed: false, unit: 'V' }
         },
         {
           id: 'vs-9',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 9, known: true, computed: false, unit: 'V' }
@@ -130,7 +139,8 @@ describe('solveCircuit diagnostics', () => {
       components: [
         {
           id: 'l1',
-          kind: 'inductor',
+          kind: 'passive2p',
+        catalogTypeId: 'inductor',
           from: 'n1',
           to: 'gnd',
           inductance: { known: true, computed: false, unit: 'H' }
@@ -149,14 +159,16 @@ describe('solveCircuit diagnostics', () => {
       components: [
         {
           id: 'r1',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: { value: 10, known: true, computed: false, unit: 'Ω' }
         },
         {
           id: 'r2',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n2',
           to: 'n3',
           resistance: { value: 5, known: true, computed: false, unit: 'Ω' }
@@ -186,7 +198,8 @@ describe('solveCircuit diagnostics', () => {
       components: [
         {
           id: 'r-bad',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: { value: 0, known: true, computed: false, unit: 'V', constraints: { nonZero: true, min: 0.1 } }
@@ -219,14 +232,16 @@ describe('solveCircuit target solving', () => {
       components: [
         {
           id: 'vs',
-          kind: 'voltageSource',
+          kind: 'source2p',
+        catalogTypeId: 'voltage-source',
           from: 'n1',
           to: 'gnd',
           voltage: { value: 10, known: true, computed: false, unit: 'V' }
         },
         {
           id: 'r1',
-          kind: 'resistor',
+          kind: 'passive2p',
+        catalogTypeId: 'resistor',
           from: 'n1',
           to: 'gnd',
           resistance: { value: 5, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
@@ -247,7 +262,8 @@ describe('solveCircuit target solving', () => {
       components: [
         {
           id: 'c1',
-          kind: 'capacitor',
+          kind: 'passive2p',
+        catalogTypeId: 'capacitor',
           from: 'n1',
           to: 'gnd',
           capacitance: { value: 2e-6, known: true, computed: false, unit: 'F' }
@@ -269,8 +285,10 @@ describe('extended component family canonical circuits', () => {
     const result = solveCircuit({
       nodes: [...baseNodes],
       components: [
-        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'd1', kind: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.7, known: true, computed: false, unit: 'V' }, onResistance: { value: 10, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 1e6, known: true, computed: false, unit: 'Ω' } }
+        { id: 'vs', kind: 'source2p',
+        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'd1', kind: 'switch',
+        catalogTypeId: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.7, known: true, computed: false, unit: 'V' }, onResistance: { value: 10, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 1e6, known: true, computed: false, unit: 'Ω' } }
       ]
     });
     expect(result.values['component:d1:current']?.value).toBeTypeOf('number');
@@ -280,8 +298,10 @@ describe('extended component family canonical circuits', () => {
     const result = solveCircuit({
       nodes: [...baseNodes],
       components: [
-        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'q1', kind: 'bjt', from: 'n1', to: 'gnd', beta: { value: 100, known: true, computed: false, unit: 'A' }, vbeOn: { value: 0.7, known: true, computed: false, unit: 'V' } }
+        { id: 'vs', kind: 'source2p',
+        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'q1', kind: 'switch',
+        catalogTypeId: 'bjt', from: 'n1', to: 'gnd', beta: { value: 100, known: true, computed: false, unit: 'A' }, vbeOn: { value: 0.7, known: true, computed: false, unit: 'V' } }
       ]
     });
     expect(result.values['component:q1:current']?.value).toBeTypeOf('number');
@@ -291,8 +311,10 @@ describe('extended component family canonical circuits', () => {
     const result = solveCircuit({
       nodes: [...baseNodes],
       components: [
-        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'm1', kind: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 5, known: true, computed: false, unit: 'Ω' } }
+        { id: 'vs', kind: 'source2p',
+        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'm1', kind: 'switch',
+        catalogTypeId: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 5, known: true, computed: false, unit: 'Ω' } }
       ]
     });
     expect(result.values['component:m1:current']?.value).toBeTypeOf('number');
@@ -302,8 +324,10 @@ describe('extended component family canonical circuits', () => {
     const result = solveCircuit({
       nodes: [...baseNodes],
       components: [
-        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 1, known: true, computed: false, unit: 'V' } },
-        { id: 'u1', kind: 'opAmp', from: 'n1', to: 'gnd', gain: { value: 1e5, known: true, computed: false, unit: 'V' }, outputLimitHigh: { value: 12, known: true, computed: false, unit: 'V' }, outputLimitLow: { value: -12, known: true, computed: false, unit: 'V' } }
+        { id: 'vs', kind: 'source2p',
+        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 1, known: true, computed: false, unit: 'V' } },
+        { id: 'u1', kind: 'amplifier',
+        catalogTypeId: 'op-amp', from: 'n1', to: 'gnd', gain: { value: 1e5, known: true, computed: false, unit: 'V' }, outputLimitHigh: { value: 12, known: true, computed: false, unit: 'V' }, outputLimitLow: { value: -12, known: true, computed: false, unit: 'V' } }
       ]
     });
     expect(result.values['component:u1:output']?.value).toBeTypeOf('number');
@@ -313,8 +337,10 @@ describe('extended component family canonical circuits', () => {
     const result = solveCircuit({
       nodes: [...baseNodes],
       components: [
-        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'g1', kind: 'logicGate', from: 'n1', to: 'gnd', gateType: 'not', bridge: { highThreshold: { value: 3, known: true, computed: false, unit: 'V' }, lowThreshold: { value: 1, known: true, computed: false, unit: 'V' }, highLevel: { value: 5, known: true, computed: false, unit: 'V' }, lowLevel: { value: 0, known: true, computed: false, unit: 'V' } } }
+        { id: 'vs', kind: 'source2p',
+        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'g1', kind: 'digital',
+        catalogTypeId: 'logic-gate', from: 'n1', to: 'gnd', gateType: 'not', bridge: { highThreshold: { value: 3, known: true, computed: false, unit: 'V' }, lowThreshold: { value: 1, known: true, computed: false, unit: 'V' }, highLevel: { value: 5, known: true, computed: false, unit: 'V' }, lowLevel: { value: 0, known: true, computed: false, unit: 'V' } } }
       ]
     });
     expect(result.values['component:g1:logic_output']?.value).toBeTypeOf('number');
@@ -324,8 +350,10 @@ describe('extended component family canonical circuits', () => {
     const result = solveCircuit({
       nodes: [...baseNodes],
       components: [
-        { id: 'vs', kind: 'voltageSource', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' }, nonIdeal: { internalResistance: { value: 1, known: true, computed: false, unit: 'Ω' }, rippleAmplitude: { value: 0.2, known: true, computed: false, unit: 'V' }, rippleFrequencyHz: { value: 120, known: true, computed: false, unit: 'Hz' } } },
-        { id: 'r1', kind: 'resistor', from: 'n1', to: 'gnd', resistance: { value: 10, known: true, computed: false, unit: 'Ω' } }
+        { id: 'vs', kind: 'source2p',
+        catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' }, nonIdeal: { internalResistance: { value: 1, known: true, computed: false, unit: 'Ω' }, rippleAmplitude: { value: 0.2, known: true, computed: false, unit: 'V' }, rippleFrequencyHz: { value: 120, known: true, computed: false, unit: 'Hz' } } },
+        { id: 'r1', kind: 'passive2p',
+        catalogTypeId: 'resistor', from: 'n1', to: 'gnd', resistance: { value: 10, known: true, computed: false, unit: 'Ω' } }
       ]
     });
     expect(result.values['component:r1:current']?.value).toBeTypeOf('number');
