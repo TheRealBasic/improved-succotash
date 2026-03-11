@@ -35,3 +35,72 @@ body {
   width: 100%;
   margin-top: 0.25rem;
 }
+
+.circuit-canvas .canvas-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.palette-item,
+.property-panel button {
+  border: 1px solid #3553a3;
+  border-radius: 8px;
+  background: #1e2f66;
+  color: #e6ecff;
+  padding: 0.4rem 0.65rem;
+}
+
+.palette-item.danger,
+.danger {
+  background: #5a1f2b;
+  border-color: #9a3649;
+}
+
+.canvas-surface {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #2f447d;
+  border-radius: 10px;
+  background: #0f1733;
+}
+
+.component-label {
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+
+.hint {
+  opacity: 0.85;
+  font-size: 0.85rem;
+}
+
+.field-group,
+.computed-block {
+  margin-bottom: 1rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+  background: rgba(14, 20, 44, 0.55);
+}
+
+.unit-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.validation-error,
+.diag-error {
+  color: #ff8d99;
+}
+
+.diag-warning {
+  color: #ffd28a;
+}
+
+.diag-info,
+.readonly {
+  color: #bfcfff;
+}
