@@ -22,6 +22,7 @@ type PropertyPanelProps = {
   selectedTarget: SolveTarget;
   onChangeSelectedTarget: (target: SolveTarget) => void;
   onSolveForTarget: () => void;
+  solveShortcutHint?: string;
   onUpdateComponentValue: (componentId: string, valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current', value: number) => void;
   onValueApplied: () => void;
   onJumpToEquationRow?: (rowId: string) => void;
@@ -70,7 +71,7 @@ const getEquationRowsForComponentValue = (component: CircuitComponent, valueKey:
     .map((row) => row.rowId);
 };
 
-export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, onUpdateComponentValue, onValueApplied, onJumpToEquationRow }: PropertyPanelProps) => {
+export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, solveShortcutHint, onUpdateComponentValue, onValueApplied, onJumpToEquationRow }: PropertyPanelProps) => {
   const editableField = getEditableField(selectedComponent);
   const [displayValue, setDisplayValue] = useState<string>('');
   const [prefix, setPrefix] = useState<Prefix>('');
@@ -192,7 +193,7 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
             <option value="component_value">Component value</option>
           </select>
         </label>
-        <button type="button" onClick={onSolveForTarget}>
+        <button type="button" onClick={onSolveForTarget} title={solveShortcutHint ? `Shortcut: ${solveShortcutHint}` : undefined}>
           Solve for X
         </button>
         {targetResult && <p className="readonly">{targetResult.key}: {formatValue(targetResult.value)} {targetResult.unit} ({targetResult.unique ? 'unique' : 'non-unique'})</p>}

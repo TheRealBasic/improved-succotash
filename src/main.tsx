@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { CircuitCanvas, type CanvasComponent } from './components/CircuitCanvas';
 import { EquationBreakdownPanel } from './components/EquationBreakdownPanel';
 import { PropertyPanel } from './components/PropertyPanel';
+import { SHORTCUTS, isTextInputLike, shortcutLabel } from './components/shortcuts';
 import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
 import type { CircuitComponent, ComponentKind, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
@@ -73,9 +74,10 @@ const getInitialCircuit = (): EditorCircuit => {
 };
 
 const App = () => {
+  type HistoryEntry = { circuit: EditorCircuit; action: string; timestamp: number };
   const [circuit, setCircuit] = useState<EditorCircuit>(getInitialCircuit);
-  const [history, setHistory] = useState<EditorCircuit[]>([]);
-  const [future, setFuture] = useState<EditorCircuit[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [future, setFuture] = useState<HistoryEntry[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined);
   const [selectedComponentId, setSelectedComponentId] = useState<string | undefined>(undefined);
   const [pendingWireFromNodeId, setPendingWireFromNodeId] = useState<string | undefined>(undefined);
@@ -89,6 +91,7 @@ const App = () => {
   const [audioBlocked, setAudioBlocked] = useState(isSfxBlocked());
   const [focusedEquationRowId, setFocusedEquationRowId] = useState<string | undefined>(undefined);
   const [rerouteWiresOnMove, setRerouteWiresOnMove] = useState(true);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   const selectedComponent = useMemo(
     () => circuit.components.find((component) => component.id === selectedComponentId),
@@ -108,17 +111,30 @@ const App = () => {
     [primaryCurrent, primaryVoltage]
   );
 
-  const applyCircuitUpdate = (updater: (current: EditorCircuit) => EditorCircuit) => {
+  const applyCircuitUpdate = (updater: (current: EditorCircuit) => EditorCircuit, action = 'Edit') => {
     setCircuit((current) => {
       const next = updater(current);
       if (JSON.stringify(next) === JSON.stringify(current)) {
         return current;
       }
 
-      setHistory((prev) => [...prev.slice(-HISTORY_LIMIT + 1), cloneCircuit(current)]);
+      setHistory((prev) => [...prev.slice(-HISTORY_LIMIT + 1), { circuit: cloneCircuit(current), action, timestamp: Date.now() }]);
       setFuture([]);
       return next;
     });
+  };
+
+  const timeline = useMemo(() => [...history, { circuit, action: 'Current', timestamp: Date.now() }, ...future], [history, circuit, future]);
+  const timelineIndex = history.length;
+
+  const jumpToTimelineIndex = (targetIndex: number) => {
+    if (targetIndex < 0 || targetIndex >= timeline.length || targetIndex === timelineIndex) {
+      return;
+    }
+    const target = timeline[targetIndex];
+    setCircuit(cloneCircuit(target.circuit));
+    setHistory(timeline.slice(0, targetIndex).map((entry) => ({ ...entry, circuit: cloneCircuit(entry.circuit) })));
+    setFuture(timeline.slice(targetIndex + 1).map((entry) => ({ ...entry, circuit: cloneCircuit(entry.circuit) })));
   };
 
   useEffect(() => subscribeToSfxSettings(setSfxSettings), []);
@@ -156,6 +172,10 @@ const App = () => {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isTextInputLike(event.target)) {
+        return;
+      }
+
       const mod = event.metaKey || event.ctrlKey;
       if (mod && event.key.toLowerCase() === 'z') {
         event.preventDefault();
@@ -167,6 +187,29 @@ const App = () => {
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {
         deleteSelected();
+      }
+
+      if (event.key === '?') {
+        setShowShortcutHelp((value) => !value);
+      }
+      if (!mod && !event.shiftKey) {
+        const key = event.key.toLowerCase();
+        if (key === 'r') addComponentAt('resistor', 380, 260);
+        if (key === 'c') addComponentAt('capacitor', 380, 260);
+        if (key === 'l') addComponentAt('inductor', 380, 260);
+        if (key === 'v') addComponentAt('voltageSource', 380, 260);
+        if (key === 'i') addComponentAt('currentSource', 380, 260);
+        if (key === 's') addSubcircuitAt(380, 260);
+        if (key === 'w' && selectedNodeId) startOrCompleteWire(selectedNodeId);
+        if (key === 'd') duplicateSelected();
+        if (key === 'g') groupSelected();
+        if (key === 'x') solveForTarget();
+        if (key === '[') jumpToTimelineIndex(timelineIndex - 1);
+        if (key === ']') jumpToTimelineIndex(timelineIndex + 1);
+      }
+
+      if (!mod && event.shiftKey && event.key.toLowerCase() === 'g') {
+        ungroupSelected();
       }
     };
 
@@ -188,8 +231,8 @@ const App = () => {
       if (!previous) {
         return prev;
       }
-      setFuture((curr) => [cloneCircuit(circuit), ...curr].slice(0, HISTORY_LIMIT));
-      setCircuit(previous);
+      setFuture((curr) => [{ circuit: cloneCircuit(circuit), action: 'Redo target', timestamp: Date.now() }, ...curr].slice(0, HISTORY_LIMIT));
+      setCircuit(previous.circuit);
       return prev.slice(0, -1);
     });
   };
@@ -200,8 +243,8 @@ const App = () => {
       if (!next) {
         return prev;
       }
-      setHistory((curr) => [...curr, cloneCircuit(circuit)].slice(-HISTORY_LIMIT));
-      setCircuit(next);
+      setHistory((curr) => [...curr, { circuit: cloneCircuit(circuit), action: 'Undo target', timestamp: Date.now() }].slice(-HISTORY_LIMIT));
+      setCircuit(next.circuit);
       return prev.slice(1);
     });
   };
@@ -224,7 +267,7 @@ const App = () => {
         ],
         components: [...current.components, componentFactory(kind, baseId, fromNodeId, toNodeId)]
       };
-    });
+    }, `Place ${kind}`);
     playSfx('place');
   };
 
@@ -232,7 +275,7 @@ const App = () => {
     applyCircuitUpdate((current) => ({
       ...current,
       nodes: current.nodes.map((node) => (node.id === nodeId ? { ...node, x, y } : node))
-    }));
+    }), 'Move node');
   };
 
   const deleteSelected = () => {
@@ -257,7 +300,7 @@ const App = () => {
       }
 
       return current;
-    });
+    }, 'Delete selected');
 
     setSelectedComponentId(undefined);
     setSelectedNodeId(undefined);
@@ -288,7 +331,7 @@ const App = () => {
           label: 'wire'
         }
       ]
-    }));
+    }), 'Connect wire');
     playSfx('connect');
     setPendingWireFromNodeId(undefined);
   };
@@ -318,7 +361,39 @@ const App = () => {
         nodes: [...current.nodes, { id: leftNodeId, x: x - 40, y, groupId: template.groupId }, { id: rightNodeId, x: x + 40, y, groupId: template.groupId }],
         components: [...current.components, component]
       };
-    });
+    }, 'Place subcircuit');
+  };
+
+  const duplicateSelected = () => {
+    applyCircuitUpdate((current) => {
+      if (selectedComponentId) {
+        const selectedComponent = current.components.find((component) => component.id === selectedComponentId);
+        if (!selectedComponent) {
+          return current;
+        }
+        const fromNode = current.nodes.find((node) => node.id === selectedComponent.from);
+        const toNode = current.nodes.find((node) => node.id === selectedComponent.to);
+        if (!fromNode || !toNode) {
+          return current;
+        }
+        const cloneId = `${selectedComponent.kind}-${Date.now()}`;
+        const fromId = `${cloneId}-from`;
+        const toId = `${cloneId}-to`;
+        return {
+          ...current,
+          nodes: [...current.nodes, { ...fromNode, id: fromId, x: fromNode.x + 20, y: fromNode.y + 20 }, { ...toNode, id: toId, x: toNode.x + 20, y: toNode.y + 20 }],
+          components: [...current.components, { ...selectedComponent, id: cloneId, from: fromId, to: toId, label: `${selectedComponent.label ?? selectedComponent.kind} copy` }]
+        };
+      }
+      if (selectedNodeId) {
+        const node = current.nodes.find((item) => item.id === selectedNodeId);
+        if (!node) {
+          return current;
+        }
+        return { ...current, nodes: [...current.nodes, { ...node, id: `${node.id}-copy-${Date.now()}`, x: node.x + 20, y: node.y + 20 }] };
+      }
+      return current;
+    }, 'Duplicate selected');
   };
 
   const groupSelected = () => {
@@ -372,7 +447,7 @@ const App = () => {
         components: current.components.map((component) => (memberComponentIds.has(component.id) ? { ...component, groupId } : component)),
         subcircuits: [...(current.subcircuits ?? []), sub]
       };
-    });
+    }, 'Group selected');
   };
 
   const ungroupSelected = () => {
@@ -391,7 +466,7 @@ const App = () => {
         components: current.components.map((component) => (component.groupId === selectedGroupId ? { ...component, groupId: undefined } : component)),
         subcircuits: (current.subcircuits ?? []).filter((sub) => sub.groupId !== selectedGroupId)
       };
-    });
+    }, 'Ungroup selected');
   };
 
   const updateComponentValue = (
@@ -424,7 +499,7 @@ const App = () => {
 
         return component;
       })
-    }));
+    }), 'Update value');
   };
 
   const loadPreset = (preset: keyof typeof circuitPresets) => {
@@ -535,6 +610,12 @@ const App = () => {
         <button type="button" onClick={importCircuit}>
           Import JSON
         </button>
+        <button type="button" onClick={duplicateSelected} title={`Shortcut: ${shortcutLabel('duplicate')}`}>
+          Duplicate Selected
+        </button>
+        <button type="button" onClick={() => setShowShortcutHelp((value) => !value)} title={`Shortcut: ${shortcutLabel('help')}`}>
+          Keyboard Help
+        </button>
         <label>
           SFX Volume: {Math.round(sfxSettings.volume * 100)}%
           <input type="range" min={0} max={100} value={Math.round(sfxSettings.volume * 100)} onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
@@ -602,11 +683,32 @@ const App = () => {
               setSelectedTarget({ type: target.type, componentId: target.componentId || selectedComponentId || '' });
             }}
             onSolveForTarget={solveForTarget}
+            solveShortcutHint={shortcutLabel('probe')}
             onUpdateComponentValue={updateComponentValue}
             onValueApplied={() => playSfx('connect')}
             onJumpToEquationRow={setFocusedEquationRowId}
           />
           <EquationBreakdownPanel solved={solved} focusedRowId={focusedEquationRowId} onFocusRow={setFocusedEquationRowId} />
+          <aside className="panel timeline-panel">
+            <h2>Timeline</h2>
+            {timeline.map((entry, index) => (
+              <button key={`${entry.timestamp}-${index}`} type="button" className={`timeline-item ${index === timelineIndex ? 'active' : ''}`} onClick={() => jumpToTimelineIndex(index)}>
+                {index === timelineIndex ? '●' : '○'} {entry.action}
+              </button>
+            ))}
+          </aside>
+          {showShortcutHelp && (
+            <aside className="panel shortcut-help">
+              <h2>Keyboard Shortcuts</h2>
+              <ul>
+                {SHORTCUTS.map((shortcut) => (
+                  <li key={shortcut.id}>
+                    <strong>{shortcut.keys.join(' / ')}</strong>: {shortcut.description}
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          )}
         </div>
       </section>
     </main>
