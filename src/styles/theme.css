@@ -118,3 +118,19 @@ body {
 .readonly {
   color: #bfcfff;
 }
+
+.app-controls select,
+.app-controls button {
+  margin-right: 0.25rem;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.status-grid p {
+  margin: 0;
+}
