@@ -5,7 +5,7 @@ import { EquationBreakdownPanel } from './components/EquationBreakdownPanel';
 import { PropertyPanel } from './components/PropertyPanel';
 import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
-import type { CircuitComponent, ComponentKind, SolveCircuitResult, SolveTarget, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
+import type { CircuitComponent, ComponentKind, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
 import { runAnalysis, simulateStep } from './engine/simulation';
 import { solveCircuitForTarget, solveCircuitValues } from './engine/solver';
 import './styles/theme.css';
@@ -38,7 +38,13 @@ const componentFactory = (kind: Exclude<ComponentKind, 'wire'>, id: string, from
 };
 
 const encodeCircuit = (circuit: EditorCircuit): string => window.btoa(unescape(encodeURIComponent(JSON.stringify(circuit))));
-const decodeCircuit = (encoded: string): EditorCircuit => JSON.parse(decodeURIComponent(escape(window.atob(encoded)))) as EditorCircuit;
+const decodeCircuit = (encoded: string): EditorCircuit => normalizeCircuit(JSON.parse(decodeURIComponent(escape(window.atob(encoded)))) as EditorCircuit);
+
+
+const normalizeCircuit = (circuit: EditorCircuit): EditorCircuit => ({
+  ...circuit,
+  subcircuits: circuit.subcircuits ?? []
+});
 
 const getInitialCircuit = (): EditorCircuit => {
   if (typeof window === 'undefined') {
@@ -57,7 +63,7 @@ const getInitialCircuit = (): EditorCircuit => {
   const local = window.localStorage.getItem(STORAGE_KEY);
   if (local) {
     try {
-      return JSON.parse(local) as EditorCircuit;
+      return normalizeCircuit(JSON.parse(local) as EditorCircuit);
     } catch {
       return cloneCircuit(circuitPresets.starter);
     }
@@ -82,6 +88,7 @@ const App = () => {
   const [sfxSettings, setSfxSettings] = useState(getSfxSettings());
   const [audioBlocked, setAudioBlocked] = useState(isSfxBlocked());
   const [focusedEquationRowId, setFocusedEquationRowId] = useState<string | undefined>(undefined);
+  const [rerouteWiresOnMove, setRerouteWiresOnMove] = useState(true);
 
   const selectedComponent = useMemo(
     () => circuit.components.find((component) => component.id === selectedComponentId),
@@ -209,6 +216,7 @@ const App = () => {
       const fromNodeId = `${baseId}-from`;
       const toNodeId = `${baseId}-to`;
       return {
+        ...current,
         nodes: [
           ...current.nodes,
           { id: fromNodeId, x: x - 40, y },
@@ -285,6 +293,107 @@ const App = () => {
     setPendingWireFromNodeId(undefined);
   };
 
+
+  const addSubcircuitAt = (x: number, y: number) => {
+    applyCircuitUpdate((current) => {
+      const template = current.subcircuits?.[0];
+      if (!template) {
+        return current;
+      }
+
+      const instanceId = `sub-${Date.now()}`;
+      const leftNodeId = `${instanceId}-in`;
+      const rightNodeId = `${instanceId}-out`;
+      const component: CircuitComponent = {
+        id: instanceId,
+        kind: 'wire',
+        from: leftNodeId,
+        to: rightNodeId,
+        label: template.label,
+        groupId: template.groupId
+      };
+
+      return {
+        ...current,
+        nodes: [...current.nodes, { id: leftNodeId, x: x - 40, y, groupId: template.groupId }, { id: rightNodeId, x: x + 40, y, groupId: template.groupId }],
+        components: [...current.components, component]
+      };
+    });
+  };
+
+  const groupSelected = () => {
+    const selectedIds = {
+      nodeId: selectedNodeId,
+      componentId: selectedComponentId
+    };
+
+    if (!selectedIds.nodeId && !selectedIds.componentId) {
+      return;
+    }
+
+    applyCircuitUpdate((current) => {
+      const memberNodeIds = new Set<string>();
+      const memberComponentIds = new Set<string>();
+
+      if (selectedIds.nodeId) {
+        memberNodeIds.add(selectedIds.nodeId);
+      }
+      if (selectedIds.componentId) {
+        memberComponentIds.add(selectedIds.componentId);
+        const component = current.components.find((entry) => entry.id === selectedIds.componentId);
+        if (component) {
+          memberNodeIds.add(component.from);
+          memberNodeIds.add(component.to);
+        }
+      }
+
+      if (!memberNodeIds.size && !memberComponentIds.size) {
+        return current;
+      }
+
+      const groupId = `group-${Date.now()}`;
+      const memberNodes = current.nodes.filter((node) => memberNodeIds.has(node.id));
+      const memberComponents = current.components.filter((component) => memberComponentIds.has(component.id));
+      const externalPins = memberNodes.slice(0, 2).map((node, index) => ({ id: `${groupId}-pin-${index + 1}`, label: `P${index + 1}`, memberNodeId: node.id }));
+      const sub: SubcircuitDefinition = {
+        id: `subdef-${Date.now()}`,
+        groupId,
+        label: `Subcircuit ${((current.subcircuits?.length ?? 0) + 1)}`,
+        externalPins,
+        internalMembers: {
+          nodes: memberNodes,
+          components: memberComponents
+        }
+      };
+
+      return {
+        ...current,
+        nodes: current.nodes.map((node) => (memberNodeIds.has(node.id) ? { ...node, groupId } : node)),
+        components: current.components.map((component) => (memberComponentIds.has(component.id) ? { ...component, groupId } : component)),
+        subcircuits: [...(current.subcircuits ?? []), sub]
+      };
+    });
+  };
+
+  const ungroupSelected = () => {
+    applyCircuitUpdate((current) => {
+      const selectedGroupId =
+        current.components.find((component) => component.id === selectedComponentId)?.groupId ??
+        current.nodes.find((node) => node.id === selectedNodeId)?.groupId;
+
+      if (!selectedGroupId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        nodes: current.nodes.map((node) => (node.groupId === selectedGroupId ? { ...node, groupId: undefined } : node)),
+        components: current.components.map((component) => (component.groupId === selectedGroupId ? { ...component, groupId: undefined } : component)),
+        subcircuits: (current.subcircuits ?? []).filter((sub) => sub.groupId !== selectedGroupId)
+      };
+    });
+  };
+
   const updateComponentValue = (
     componentId: string,
     valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current',
@@ -319,7 +428,7 @@ const App = () => {
   };
 
   const loadPreset = (preset: keyof typeof circuitPresets) => {
-    setCircuit(cloneCircuit(circuitPresets[preset]));
+    setCircuit(normalizeCircuit(cloneCircuit(circuitPresets[preset])));
     setHistory([]);
     setFuture([]);
     setSelectedComponentId(undefined);
@@ -340,7 +449,7 @@ const App = () => {
       return;
     }
     try {
-      const parsed = JSON.parse(raw) as EditorCircuit;
+      const parsed = normalizeCircuit(JSON.parse(raw) as EditorCircuit);
       setCircuit(parsed);
       playSfx('place');
     } catch {
@@ -414,7 +523,7 @@ const App = () => {
         <button type="button" onClick={() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(circuit))}>
           Save
         </button>
-        <button type="button" onClick={() => setCircuit(getInitialCircuit())}>
+        <button type="button" onClick={() => setCircuit(normalizeCircuit(getInitialCircuit()))}>
           Load
         </button>
         <button type="button" onClick={shareCircuit}>
@@ -459,7 +568,12 @@ const App = () => {
           selectedComponentId={selectedComponentId}
           pendingWireFromNodeId={pendingWireFromNodeId}
           simulationActive={simulationActive}
+          rerouteWiresOnMove={rerouteWiresOnMove}
+          onSetRerouteWiresOnMove={setRerouteWiresOnMove}
           onAddComponentAt={addComponentAt}
+          onAddSubcircuitAt={addSubcircuitAt}
+          onGroupSelected={groupSelected}
+          onUngroupSelected={ungroupSelected}
           onMoveNode={moveNode}
           onDeleteSelected={deleteSelected}
           onSelectNode={(nodeId) => {

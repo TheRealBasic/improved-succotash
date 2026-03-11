@@ -30,6 +30,7 @@ export type CircuitNode = {
   id: string;
   reference?: boolean;
   voltage?: ValueMetadata;
+  groupId?: string;
 };
 
 export type ComponentBase = {
@@ -38,6 +39,24 @@ export type ComponentBase = {
   from: string;
   to: string;
   label?: string;
+  groupId?: string;
+};
+
+export type SubcircuitExternalPin = {
+  id: string;
+  label: string;
+  memberNodeId: string;
+};
+
+export type SubcircuitDefinition = {
+  id: string;
+  groupId: string;
+  label: string;
+  externalPins: SubcircuitExternalPin[];
+  internalMembers: {
+    nodes: CircuitNode[];
+    components: CircuitComponent[];
+  };
 };
 
 export type ResistorComponent = ComponentBase & {

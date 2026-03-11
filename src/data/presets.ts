@@ -1,9 +1,10 @@
-import type { CircuitComponent } from '../engine/model';
+import type { CircuitComponent, SubcircuitDefinition } from '../engine/model';
 import type { CanvasNodePosition } from '../components/CircuitCanvas';
 
 export type EditorCircuit = {
   nodes: CanvasNodePosition[];
   components: CircuitComponent[];
+  subcircuits?: SubcircuitDefinition[];
 };
 
 const baseReferenceNode: CanvasNodePosition = { id: 'n-ref', x: 180, y: 280, reference: true };
@@ -84,4 +85,8 @@ export const circuitPresets: Record<string, EditorCircuit> = {
   }
 };
 
-export const cloneCircuit = (circuit: EditorCircuit): EditorCircuit => JSON.parse(JSON.stringify(circuit)) as EditorCircuit;
+export const cloneCircuit = (circuit: EditorCircuit): EditorCircuit => {
+  const cloned = JSON.parse(JSON.stringify(circuit)) as EditorCircuit;
+  cloned.subcircuits = cloned.subcircuits ?? [];
+  return cloned;
+};
