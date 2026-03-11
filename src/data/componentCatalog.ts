@@ -17,6 +17,30 @@ export const COMPONENT_CATEGORY_ORDER = [
 
 export type ComponentCategory = (typeof COMPONENT_CATEGORY_ORDER)[number];
 
+export type ComponentPropertyValueType = 'number' | 'string' | 'boolean' | 'enum';
+
+export type ComponentEditableProperty = {
+  type: ComponentPropertyValueType;
+  label: string;
+  min?: number;
+  max?: number;
+  unit?: string;
+  options?: string[];
+};
+
+export type ComponentPinMetadata = {
+  id: string;
+  label: string;
+  index: number;
+  role?: 'input' | 'output' | 'bidirectional' | 'power' | 'passive' | 'control';
+};
+
+export type ComponentSolverBehavior = {
+  model: string;
+  propertyMap?: Record<string, string>;
+  pinMap?: Record<string, string>;
+};
+
 export type ComponentCatalogItem = {
   id: string;
   displayName: string;
@@ -26,13 +50,61 @@ export type ComponentCatalogItem = {
   description: string;
   tags: string[];
   pinCount: number;
+  symbolVariant: string;
+  pins: ComponentPinMetadata[];
+  editablePropertySchema: Record<string, ComponentEditableProperty>;
+  solverBehavior: ComponentSolverBehavior;
   defaultProps: Record<string, number | string | boolean>;
   partNumber?: string;
   manufacturer?: string;
   datasheetUrl?: string;
+  packageHint?: string;
+  footprintHint?: string;
+  compatibilityTags?: string[];
 };
 
-export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
+type LegacyComponentCatalogItem = Omit<
+  ComponentCatalogItem,
+  'symbolVariant' | 'pins' | 'editablePropertySchema' | 'solverBehavior' | 'compatibilityTags'
+> &
+  Partial<Pick<ComponentCatalogItem, 'symbolVariant' | 'pins' | 'editablePropertySchema' | 'solverBehavior' | 'compatibilityTags'>>;
+
+const buildDefaultPins = (pinCount: number): ComponentPinMetadata[] =>
+  Array.from({ length: pinCount }, (_, index) => ({
+    id: `pin-${index + 1}`,
+    label: `Pin ${index + 1}`,
+    index
+  }));
+
+const buildDefaultEditablePropertySchema = (
+  defaultProps: Record<string, number | string | boolean>
+): Record<string, ComponentEditableProperty> =>
+  Object.fromEntries(
+    Object.entries(defaultProps).map(([key, value]) => {
+      const inferredType = typeof value;
+      return [
+        key,
+        {
+          type: inferredType === 'number' || inferredType === 'string' || inferredType === 'boolean' ? inferredType : 'string',
+          label: key
+        }
+      ];
+    })
+  );
+
+const migrateCatalogItem = (item: LegacyComponentCatalogItem): ComponentCatalogItem => ({
+  ...item,
+  symbolVariant: item.symbolVariant ?? 'generic',
+  pins: item.pins ?? buildDefaultPins(item.pinCount),
+  editablePropertySchema: item.editablePropertySchema ?? buildDefaultEditablePropertySchema(item.defaultProps),
+  solverBehavior: item.solverBehavior ?? {
+    model: item.kind,
+    propertyMap: Object.fromEntries(Object.keys(item.defaultProps).map((key) => [key, key]))
+  },
+  compatibilityTags: item.compatibilityTags ?? [item.kind, item.category]
+});
+
+const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   {
     id: 'resistor',
     displayName: 'Resistor',
@@ -212,6 +284,8 @@ export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = [
   }
 ];
 
+export const COMPONENT_CATALOG_ITEMS: ComponentCatalogItem[] = COMPONENT_CATALOG_ITEMS_LEGACY.map(migrateCatalogItem);
+
 export const componentCatalogSort = (left: ComponentCatalogItem, right: ComponentCatalogItem): number => {
   const categoryOrder = COMPONENT_CATEGORY_ORDER.indexOf(left.category) - COMPONENT_CATEGORY_ORDER.indexOf(right.category);
   if (categoryOrder !== 0) {
@@ -246,6 +320,50 @@ export const validateComponentCatalog = (
 
     if (!validCategories.includes(item.category)) {
       errors.push(`Invalid category "${item.category}" on item "${item.id}"`);
+    }
+
+    const isHighVolume = Boolean(item.partNumber);
+    if (isHighVolume) {
+      if (!item.symbolVariant.trim()) {
+        errors.push(`High-volume item "${item.id}" is missing symbolVariant`);
+      }
+      if (!item.solverBehavior.model.trim()) {
+        errors.push(`High-volume item "${item.id}" is missing solverBehavior.model`);
+      }
+      if (item.pins.length === 0) {
+        errors.push(`High-volume item "${item.id}" requires explicit pin metadata`);
+      }
+      if (Object.keys(item.editablePropertySchema).length === 0) {
+        errors.push(`High-volume item "${item.id}" requires editablePropertySchema`);
+      }
+    }
+
+    if (item.pins.length !== item.pinCount) {
+      errors.push(`Pin metadata count mismatch on item "${item.id}": expected ${item.pinCount}, got ${item.pins.length}`);
+    }
+
+    for (const [propertyName, schema] of Object.entries(item.editablePropertySchema)) {
+      if (!schema || typeof schema !== 'object') {
+        errors.push(`Malformed property schema for "${propertyName}" on item "${item.id}"`);
+        continue;
+      }
+
+      if (!schema.label || typeof schema.label !== 'string') {
+        errors.push(`Property schema "${propertyName}" on item "${item.id}" must include a string label`);
+      }
+
+      const validType = schema.type === 'number' || schema.type === 'string' || schema.type === 'boolean' || schema.type === 'enum';
+      if (!validType) {
+        errors.push(`Property schema "${propertyName}" on item "${item.id}" has invalid type`);
+      }
+
+      if (schema.type === 'enum' && (!Array.isArray(schema.options) || schema.options.length === 0)) {
+        errors.push(`Enum schema "${propertyName}" on item "${item.id}" must define options`);
+      }
+
+      if (schema.type !== 'enum' && schema.options !== undefined) {
+        errors.push(`Property schema "${propertyName}" on item "${item.id}" can only define options for enum type`);
+      }
     }
   }
 
