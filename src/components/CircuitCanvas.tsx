@@ -7,6 +7,7 @@ export type CanvasNodePosition = {
   x: number;
   y: number;
   reference?: boolean;
+  groupId?: string;
 };
 
 export type CanvasComponent = {
@@ -15,9 +16,13 @@ export type CanvasComponent = {
   from: string;
   to: string;
   label?: string;
+  groupId?: string;
 };
 
 type RenderStatus = 'stable' | 'entering' | 'exiting';
+
+type Point = { x: number; y: number };
+type Rect = { left: number; right: number; top: number; bottom: number };
 
 type CircuitCanvasProps = {
   nodes: CanvasNodePosition[];
@@ -26,7 +31,12 @@ type CircuitCanvasProps = {
   selectedComponentId?: string;
   pendingWireFromNodeId?: string;
   simulationActive: boolean;
+  rerouteWiresOnMove: boolean;
+  onSetRerouteWiresOnMove: (enabled: boolean) => void;
   onAddComponentAt: (kind: Exclude<ComponentKind, 'wire'>, x: number, y: number) => void;
+  onAddSubcircuitAt: (x: number, y: number) => void;
+  onGroupSelected: () => void;
+  onUngroupSelected: () => void;
   onSelectNode: (nodeId: string) => void;
   onSelectComponent: (componentId: string) => void;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
@@ -37,16 +47,86 @@ type CircuitCanvasProps = {
 const GRID_SIZE = 20;
 const CANVAS_WIDTH = 820;
 const CANVAS_HEIGHT = 540;
+const PORT_SNAP_DISTANCE = 14;
 
 const snapToGrid = (value: number): number => Math.round(value / GRID_SIZE) * GRID_SIZE;
+const toGridKey = (x: number, y: number): string => `${x}:${y}`;
 
-const componentPalette: Array<{ kind: Exclude<ComponentKind, 'wire'>; label: string }> = [
+const componentPalette: Array<{ kind: Exclude<ComponentKind, 'wire'> | 'subcircuit'; label: string }> = [
   { kind: 'resistor', label: 'Resistor' },
   { kind: 'voltageSource', label: 'Voltage Source' },
   { kind: 'currentSource', label: 'Current Source' },
   { kind: 'capacitor', label: 'Capacitor' },
-  { kind: 'inductor', label: 'Inductor' }
+  { kind: 'inductor', label: 'Inductor' },
+  { kind: 'subcircuit', label: 'Subcircuit' }
 ];
+
+const componentBounds = (fromNode: CanvasNodePosition, toNode: CanvasNodePosition): Rect => ({
+  left: Math.min(fromNode.x, toNode.x) - GRID_SIZE,
+  right: Math.max(fromNode.x, toNode.x) + GRID_SIZE,
+  top: Math.min(fromNode.y, toNode.y) - GRID_SIZE,
+  bottom: Math.max(fromNode.y, toNode.y) + GRID_SIZE
+});
+
+const intersectsRect = (x: number, y: number, rect: Rect): boolean => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+
+const buildOrthogonalRoute = (start: Point, end: Point, blocked: Rect[]): Point[] => {
+  if (start.x === end.x || start.y === end.y) {
+    return [start, end];
+  }
+
+  const queue: Point[] = [start];
+  const parent = new Map<string, string>();
+  const seen = new Set<string>([toGridKey(start.x, start.y)]);
+  const directions: Point[] = [
+    { x: GRID_SIZE, y: 0 },
+    { x: -GRID_SIZE, y: 0 },
+    { x: 0, y: GRID_SIZE },
+    { x: 0, y: -GRID_SIZE }
+  ];
+
+  while (queue.length) {
+    const current = queue.shift()!;
+    if (current.x === end.x && current.y === end.y) {
+      break;
+    }
+
+    for (const step of directions) {
+      const next = { x: current.x + step.x, y: current.y + step.y };
+      if (next.x < 0 || next.y < 0 || next.x > CANVAS_WIDTH || next.y > CANVAS_HEIGHT) {
+        continue;
+      }
+
+      const key = toGridKey(next.x, next.y);
+      if (seen.has(key)) {
+        continue;
+      }
+
+      if (!(next.x === end.x && next.y === end.y) && blocked.some((rect) => intersectsRect(next.x, next.y, rect))) {
+        continue;
+      }
+
+      seen.add(key);
+      parent.set(key, toGridKey(current.x, current.y));
+      queue.push(next);
+    }
+  }
+
+  const path: Point[] = [];
+  let cursor = toGridKey(end.x, end.y);
+  if (!parent.has(cursor)) {
+    return [start, { x: end.x, y: start.y }, end];
+  }
+
+  while (cursor !== toGridKey(start.x, start.y)) {
+    const [x, y] = cursor.split(':').map(Number);
+    path.push({ x, y });
+    cursor = parent.get(cursor)!;
+  }
+
+  path.push(start);
+  return path.reverse();
+};
 
 export const CircuitCanvas = ({
   nodes,
@@ -55,7 +135,12 @@ export const CircuitCanvas = ({
   selectedComponentId,
   pendingWireFromNodeId,
   simulationActive,
+  rerouteWiresOnMove,
+  onSetRerouteWiresOnMove,
   onAddComponentAt,
+  onAddSubcircuitAt,
+  onGroupSelected,
+  onUngroupSelected,
   onSelectNode,
   onSelectComponent,
   onMoveNode,
@@ -142,6 +227,19 @@ export const CircuitCanvas = ({
     };
   };
 
+  const blockedRects = useMemo(
+    () =>
+      renderedComponents
+        .filter((component) => component.kind !== 'wire')
+        .map((component) => {
+          const from = nodeById.get(component.from);
+          const to = nodeById.get(component.to);
+          return from && to ? componentBounds(from, to) : null;
+        })
+        .filter((value): value is Rect => value != null),
+    [nodeById, renderedComponents]
+  );
+
   return (
     <article className="panel circuit-canvas">
       <h2>Circuit Canvas</h2>
@@ -158,6 +256,12 @@ export const CircuitCanvas = ({
             {entry.label}
           </button>
         ))}
+        <button type="button" onClick={onGroupSelected}>Group</button>
+        <button type="button" onClick={onUngroupSelected}>Ungroup</button>
+        <label>
+          <input type="checkbox" checked={rerouteWiresOnMove} onChange={(event) => onSetRerouteWiresOnMove(event.target.checked)} />
+          Reroute wires on move
+        </label>
         <button type="button" onClick={onDeleteSelected} className="danger">
           Delete Selected
         </button>
@@ -174,19 +278,28 @@ export const CircuitCanvas = ({
         }}
         onDrop={(event) => {
           event.preventDefault();
-          const kind = event.dataTransfer.getData('application/x-component-kind') as Exclude<ComponentKind, 'wire'>;
+          const kind = event.dataTransfer.getData('application/x-component-kind') as Exclude<ComponentKind, 'wire'> | 'subcircuit';
           if (!kind) {
             return;
           }
           const { x, y } = getPointInSvg(event);
-          onAddComponentAt(kind, x, y);
+          if (kind === 'subcircuit') {
+            onAddSubcircuitAt(x, y);
+          } else {
+            onAddComponentAt(kind, x, y);
+          }
           setCursor(null);
         }}
         onPointerMove={(event) => {
           setCursor(getPointInSvg(event));
           if (draggingNodeId != null) {
             const { x, y } = getPointInSvg(event);
-            onMoveNode(draggingNodeId, x, y);
+            const target = renderedNodes.find(
+              (node) =>
+                node.id !== draggingNodeId &&
+                Math.hypot(node.x - x, node.y - y) <= PORT_SNAP_DISTANCE
+            );
+            onMoveNode(draggingNodeId, target?.x ?? x, target?.y ?? y);
           }
         }}
         onPointerUp={() => setDraggingNodeId(null)}
@@ -212,13 +325,15 @@ export const CircuitCanvas = ({
 
           const isSelected = component.id === selectedComponentId;
           const animationClass = component.status === 'entering' ? ANIMATION_CLASS.entering : component.status === 'exiting' ? ANIMATION_CLASS.exiting : '';
+          const route = component.kind === 'wire' && rerouteWiresOnMove
+            ? buildOrthogonalRoute({ x: fromNode.x, y: fromNode.y }, { x: toNode.x, y: toNode.y }, blockedRects)
+            : [{ x: fromNode.x, y: fromNode.y }, { x: toNode.x, y: toNode.y }];
+
           return (
             <g key={component.id} className={animationClass}>
-              <line
-                x1={fromNode.x}
-                y1={fromNode.y}
-                x2={toNode.x}
-                y2={toNode.y}
+              <polyline
+                points={route.map((point) => `${point.x},${point.y}`).join(' ')}
+                fill="none"
                 className={`component-line ${component.kind === 'wire' && simulationActive ? 'wire-line' : ''}`}
                 stroke={isSelected ? '#8fc7ff' : component.kind === 'wire' ? '#8ef7b8' : '#d4dbff'}
                 strokeWidth={isSelected ? 5 : 3}
@@ -275,7 +390,7 @@ export const CircuitCanvas = ({
           );
         })}
       </svg>
-      <p className="hint">Double-click a terminal to start/finish a wire. Grid snapping is enabled.</p>
+      <p className="hint">Double-click a terminal to start/finish a wire. Grid and port snapping are enabled.</p>
     </article>
   );
 };
