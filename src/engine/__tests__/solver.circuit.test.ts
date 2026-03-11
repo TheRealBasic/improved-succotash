@@ -359,3 +359,71 @@ describe('extended component family canonical circuits', () => {
     expect(result.values['component:r1:current']?.value).toBeTypeOf('number');
   });
 });
+
+
+describe('monte carlo capability gating', () => {
+  it('runs Monte Carlo for supported components without unsupported diagnostics', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'vs',
+          kind: 'source2p',
+          catalogTypeId: 'voltage-source',
+          from: 'n1',
+          to: 'gnd',
+          voltage: { value: 5, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'r1',
+          kind: 'passive2p',
+          catalogTypeId: 'resistor',
+          from: 'n1',
+          to: 'gnd',
+          resistance: { value: 100, known: true, computed: false, unit: 'Ω', tolerancePct: 1 }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit, { monteCarlo: { runs: 5, seed: 7 } });
+
+    expect(result.monteCarlo?.runs).toBe(5);
+    expect(result.diagnostics.filter((d) => d.code === 'unsupported_component_behavior')).toHaveLength(0);
+  });
+
+  it('emits unsupported behavior diagnostics but still solves supported subset in Monte Carlo', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'vs',
+          kind: 'source2p',
+          catalogTypeId: 'voltage-source',
+          from: 'n1',
+          to: 'gnd',
+          voltage: { value: 5, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'g1',
+          kind: 'digital',
+          catalogTypeId: 'logic-gate',
+          from: 'n1',
+          to: 'gnd',
+          gateType: 'not',
+          bridge: {
+            highThreshold: { value: 3, known: true, computed: false, unit: 'V' },
+            lowThreshold: { value: 1, known: true, computed: false, unit: 'V' },
+            highLevel: { value: 5, known: true, computed: false, unit: 'V' },
+            lowLevel: { value: 0, known: true, computed: false, unit: 'V' }
+          }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit, { monteCarlo: { runs: 4, seed: 3 } });
+
+    expect(result.values['node:n1:voltage']?.value).toBeCloseTo(5, 6);
+    expect(result.diagnostics.some((d) => d.code === 'unsupported_component_behavior' && d.componentId === 'g1')).toBe(true);
+    expect(result.diagnostics.some((d) => /exclude this component from monte carlo/i.test(d.message))).toBe(true);
+  });
+});
