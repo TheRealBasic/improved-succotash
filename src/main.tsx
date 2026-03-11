@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CircuitCanvas, type CanvasComponent } from './components/CircuitCanvas';
 import { EquationBreakdownPanel } from './components/EquationBreakdownPanel';
+import { MiniOscilloscopePanel, type ProbeChannel } from './components/MiniOscilloscopePanel';
 import { PropertyPanel } from './components/PropertyPanel';
 import { SHORTCUTS, isTextInputLike, shortcutLabel } from './components/shortcuts';
 import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
@@ -92,6 +93,8 @@ const App = () => {
   const [focusedEquationRowId, setFocusedEquationRowId] = useState<string | undefined>(undefined);
   const [rerouteWiresOnMove, setRerouteWiresOnMove] = useState(true);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [probeToolActive, setProbeToolActive] = useState(false);
+  const [probeChannels, setProbeChannels] = useState<ProbeChannel[]>([]);
 
   const selectedComponent = useMemo(
     () => circuit.components.find((component) => component.id === selectedComponentId),
@@ -557,6 +560,98 @@ const App = () => {
     simulationTime
   );
 
+  const solvedNodeVoltages = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(solved.values)
+          .filter(([key]) => key.startsWith('node:') && key.endsWith(':voltage'))
+          .map(([key, value]) => [key.split(':')[1], value.value ?? 0])
+      ) as Record<string, number>,
+    [solved.values]
+  );
+
+  const solvedComponentCurrents = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(solved.values)
+          .filter(([key]) => key.startsWith('component:') && key.endsWith(':current'))
+          .map(([key, value]) => [key.split(':')[1], value.value ?? 0])
+      ) as Record<string, number>,
+    [solved.values]
+  );
+
+  const transientWaveform = useMemo(() => {
+    const transient = runAnalysis(
+      {
+        nodes: circuit.nodes.map((node) => ({
+          id: node.id,
+          reference: node.reference,
+          voltage: node.reference ? { value: 0, known: true, computed: false, unit: 'V' as const } : undefined
+        })),
+        components: circuit.components
+      },
+      { mode: 'transient', options: { timeStep: 0.05, totalTime: Math.max(2, simulationTime + 0.2) } }
+    );
+    return transient.waveform;
+  }, [circuit.components, circuit.nodes, simulationTime]);
+
+  const componentCurrentTrace = useMemo(() => {
+    const traceByComponent: Record<string, Array<{ time: number; value: number }>> = {};
+    circuit.components.forEach((component) => {
+      let previousVoltage = 0;
+      let inductorCurrent = 0;
+      traceByComponent[component.id] = transientWaveform.map((point, index) => {
+        const fromV = point.nodeVoltages[component.from] ?? 0;
+        const toV = point.nodeVoltages[component.to] ?? 0;
+        const drop = fromV - toV;
+        const dt = index > 0 ? point.time - transientWaveform[index - 1].time : 0.05;
+        let value = 0;
+        if (component.kind === 'resistor') value = drop / Math.max(component.resistance.value ?? 1, 1e-9);
+        if (component.kind === 'currentSource') value = component.current.value ?? 0;
+        if (component.kind === 'wire') value = drop / 1e-6;
+        if (component.kind === 'voltageSource') value = drop / 1e-3;
+        if (component.kind === 'capacitor') {
+          value = (component.capacitance.value ?? 0) * ((drop - previousVoltage) / Math.max(dt, 1e-9));
+          previousVoltage = drop;
+        }
+        if (component.kind === 'inductor') {
+          inductorCurrent += (drop / Math.max(component.inductance.value ?? 1, 1e-9)) * dt;
+          value = inductorCurrent;
+        }
+        return { time: point.time, value };
+      });
+    });
+    return traceByComponent;
+  }, [circuit.components, transientWaveform]);
+
+  const probeTraces = useMemo(() => {
+    const output: Record<string, Array<{ time: number; value: number }>> = {};
+    probeChannels.forEach((channel) => {
+      if (channel.targetType === 'node') {
+        output[channel.id] = transientWaveform.map((point) => ({ time: point.time, value: point.nodeVoltages[channel.targetId] ?? 0 }));
+      } else if (channel.quantity === 'voltage') {
+        const component = circuit.components.find((entry) => entry.id === channel.targetId);
+        if (!component) {
+          output[channel.id] = [];
+          return;
+        }
+        output[channel.id] = transientWaveform.map((point) => ({ time: point.time, value: (point.nodeVoltages[component.from] ?? 0) - (point.nodeVoltages[component.to] ?? 0) }));
+      } else {
+        output[channel.id] = componentCurrentTrace[channel.targetId] ?? [];
+      }
+    });
+    return output;
+  }, [circuit.components, componentCurrentTrace, probeChannels, transientWaveform]);
+
+  const addProbe = (channel: Omit<ProbeChannel, 'id'>) => {
+    setProbeChannels((current) => {
+      if (current.some((entry) => entry.targetType === channel.targetType && entry.targetId === channel.targetId && entry.quantity === channel.quantity)) {
+        return current;
+      }
+      return [...current, { ...channel, id: `${channel.targetType}-${channel.targetId}-${channel.quantity}` }];
+    });
+  };
+
   return (
     <main className="app-shell" onPointerDown={tryUnlockAudio}>
       <h1>Circuit Workbench</h1>
@@ -570,6 +665,9 @@ const App = () => {
           }}
         >
           {simulationActive ? 'Stop Simulation' : 'Start Simulation'}
+        </button>
+        <button type="button" onClick={() => setProbeToolActive((value) => !value)} className={probeToolActive ? 'danger' : ''}>
+          {probeToolActive ? 'Probe Tool: ON' : 'Probe Tool: OFF'}
         </button>
         <label>
           Mode
@@ -650,6 +748,11 @@ const App = () => {
           pendingWireFromNodeId={pendingWireFromNodeId}
           simulationActive={simulationActive}
           rerouteWiresOnMove={rerouteWiresOnMove}
+          probeToolActive={probeToolActive}
+          nodeVoltages={solvedNodeVoltages}
+          componentCurrents={solvedComponentCurrents}
+          probedNodeIds={probeChannels.filter((channel) => channel.targetType === 'node').map((channel) => channel.targetId)}
+          probedComponentIds={probeChannels.filter((channel) => channel.targetType === 'component').map((channel) => channel.targetId)}
           onSetRerouteWiresOnMove={setRerouteWiresOnMove}
           onAddComponentAt={addComponentAt}
           onAddSubcircuitAt={addSubcircuitAt}
@@ -666,6 +769,8 @@ const App = () => {
             setSelectedNodeId(undefined);
           }}
           onStartOrCompleteWire={startOrCompleteWire}
+          onProbeNode={(nodeId) => addProbe({ label: `${nodeId} V(t)`, quantity: 'voltage', unit: 'V', targetType: 'node', targetId: nodeId })}
+          onProbeComponent={(componentId) => addProbe({ label: `${componentId} I(t)`, quantity: 'current', unit: 'A', targetType: 'component', targetId: componentId })}
         />
         <div className="side-panels">
           <PropertyPanel
@@ -697,6 +802,20 @@ const App = () => {
               </button>
             ))}
           </aside>
+          <MiniOscilloscopePanel
+            channels={probeChannels}
+            traces={probeTraces}
+            onRemoveChannel={(channelId) => setProbeChannels((current) => current.filter((entry) => entry.id !== channelId))}
+            onUpdateQuantity={(channelId, quantity) =>
+              setProbeChannels((current) =>
+                current.map((entry) =>
+                  entry.id === channelId
+                    ? { ...entry, quantity, unit: quantity === 'voltage' ? 'V' : 'A', label: `${entry.targetId} ${quantity === 'voltage' ? 'V(t)' : 'I(t)'}` }
+                    : entry
+                )
+              )
+            }
+          />
           {showShortcutHelp && (
             <aside className="panel shortcut-help">
               <h2>Keyboard Shortcuts</h2>
