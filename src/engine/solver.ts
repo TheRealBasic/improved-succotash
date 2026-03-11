@@ -69,7 +69,12 @@ const componentUnits: Partial<Record<CircuitComponent['kind'], Unit>> = {
   capacitor: 'F',
   inductor: 'H',
   voltageSource: 'V',
-  currentSource: 'A'
+  currentSource: 'A',
+  diode: 'V',
+  bjt: 'A',
+  mosfet: 'V',
+  opAmp: 'V',
+  logicGate: 'V'
 };
 
 const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata | undefined => {
@@ -84,6 +89,16 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
       return component.voltage;
     case 'currentSource':
       return component.current;
+    case 'diode':
+      return component.forwardDrop;
+    case 'bjt':
+      return component.beta;
+    case 'mosfet':
+      return component.thresholdVoltage;
+    case 'opAmp':
+      return component.gain;
+    case 'logicGate':
+      return component.bridge.highThreshold;
     default:
       return undefined;
   }
@@ -352,8 +367,68 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             description: `${component.id} known voltage on ${selfNode}`
           });
         }
+      } else if (component.kind === 'diode') {
+        const vd = component.forwardDrop.value ?? 0.7;
+        const ron = component.onResistance.value ?? 10;
+        const roff = component.offResistance.value ?? 1e6;
+        const fromKnown = getKnownVoltage(component.from) ?? 0;
+        const toKnown = getKnownVoltage(component.to) ?? 0;
+        const on = fromKnown - toKnown >= vd;
+        const resistance = on ? ron : roff;
+        if (resistance !== 0) {
+          const conductance = 1 / resistance;
+          const isFrom = component.from === nodeId;
+          const isTo = component.to === nodeId;
+          if (isFrom || isTo) {
+            const sign = isFrom ? 1 : -1;
+            addCoefficient(row, `V:${component.from}`, sign * conductance);
+            addCoefficient(row, `V:${component.to}`, -sign * conductance);
+          }
+        }
+      } else if (component.kind === 'bjt') {
+        const beta = component.beta.value ?? 100;
+        const rb = 1000 / Math.max(beta, 1e-9);
+        const conductance = 1 / rb;
+        const isFrom = component.from === nodeId;
+        const isTo = component.to === nodeId;
+        if (isFrom || isTo) {
+          const sign = isFrom ? 1 : -1;
+          addCoefficient(row, `V:${component.from}`, sign * conductance);
+          addCoefficient(row, `V:${component.to}`, -sign * conductance);
+        }
+      } else if (component.kind === 'mosfet') {
+        const r = component.onResistance.value ?? 5;
+        const g = r === 0 ? 1e9 : 1 / r;
+        const isFrom = component.from === nodeId;
+        const isTo = component.to === nodeId;
+        if (isFrom || isTo) {
+          const sign = isFrom ? 1 : -1;
+          addCoefficient(row, `V:${component.from}`, sign * g);
+          addCoefficient(row, `V:${component.to}`, -sign * g);
+        }
+      } else if (component.kind === 'opAmp') {
+        const gain = component.gain.value ?? 1e5;
+        const g = Math.min(Math.abs(gain), 1e6) / 1e6;
+        const isFrom = component.from === nodeId;
+        const isTo = component.to === nodeId;
+        if (isFrom || isTo) {
+          const sign = isFrom ? 1 : -1;
+          addCoefficient(row, `V:${component.from}`, sign * g);
+          addCoefficient(row, `V:${component.to}`, -sign * g);
+        }
+      } else if (component.kind === 'logicGate') {
+        const threshold = component.bridge.highThreshold.value ?? 2.5;
+        const high = component.bridge.highLevel.value ?? 5;
+        const low = component.bridge.lowLevel.value ?? 0;
+        const inV = getKnownVoltage(component.from) ?? 0;
+        const outV = inV >= threshold ? high : low;
+        if (component.to === nodeId) {
+          rhs += outV;
+        }
       } else if (component.kind === 'currentSource') {
-        const current = component.current.value ?? 0;
+        const baseCurrent = component.current.value ?? 0;
+        const ripple = component.nonIdeal?.rippleAmplitude?.value ?? 0;
+        const current = baseCurrent + ripple;
         if (component.from === nodeId) {
           rhs -= current;
           rowConstants.push({ componentId: component.id, value: -current, description: `${component.id} source current leaving ${nodeId}` });
@@ -363,6 +438,17 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           rowConstants.push({ componentId: component.id, value: current, description: `${component.id} source current entering ${nodeId}` });
         }
       } else if (component.kind === 'voltageSource' || component.kind === 'wire' || component.kind === 'inductor') {
+        if (component.kind === 'voltageSource' && (component.nonIdeal?.internalResistance?.value ?? 0) > 0) {
+          const r = component.nonIdeal?.internalResistance?.value ?? 0;
+          const g = 1 / r;
+          const isFrom = component.from === nodeId;
+          const isTo = component.to === nodeId;
+          if (isFrom || isTo) {
+            const sign = isFrom ? 1 : -1;
+            addCoefficient(row, `V:${component.from}`, sign * g);
+            addCoefficient(row, `V:${component.to}`, -sign * g);
+          }
+        }
         if (component.from === nodeId) {
           const contribution = addCoefficient(row, `I:${component.id}`, 1);
           if (contribution !== 0) {
@@ -632,6 +718,33 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
         true,
         false
       );
+    }
+
+    if (component.kind === 'diode') {
+      const r = Math.max(component.onResistance.value ?? 10, 1e-6);
+      values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
+    }
+
+    if (component.kind === 'bjt') {
+      const r = Math.max(1000 / Math.max(component.beta.value ?? 100, 1e-6), 1e-6);
+      values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
+    }
+
+    if (component.kind === 'mosfet') {
+      const r = Math.max(component.onResistance.value ?? 5, 1e-6);
+      values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
+    }
+
+    if (component.kind === 'opAmp') {
+      const hi = component.outputLimitHigh.value ?? 12;
+      const lo = component.outputLimitLow.value ?? -12;
+      const out = Math.min(hi, Math.max(lo, (component.gain.value ?? 1) * drop));
+      values[`component:${component.id}:output`] = toSolvedValue(`component:${component.id}:output`, 'V', out, false, true);
+    }
+
+    if (component.kind === 'logicGate') {
+      const v = drop >= (component.bridge.highThreshold.value ?? 2.5) ? (component.bridge.highLevel.value ?? 5) : (component.bridge.lowLevel.value ?? 0);
+      values[`component:${component.id}:logic_output`] = toSolvedValue(`component:${component.id}:logic_output`, 'V', v, false, true);
     }
 
     if (component.kind === 'currentSource') {

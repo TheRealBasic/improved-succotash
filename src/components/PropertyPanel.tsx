@@ -23,33 +23,51 @@ type PropertyPanelProps = {
   onChangeSelectedTarget: (target: SolveTarget) => void;
   onSolveForTarget: () => void;
   solveShortcutHint?: string;
-  onUpdateComponentValue: (componentId: string, valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current', value: number) => void;
+  onUpdateComponentValue: (componentId: string, valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current' | 'forwardDrop' | 'beta' | 'thresholdVoltage' | 'gain' | 'highThreshold' | 'internalResistance' | 'rippleAmplitude', value: number) => void;
   onValueApplied: () => void;
   onJumpToEquationRow?: (rowId: string) => void;
 };
 
 const formatValue = (value?: number): string => (value == null || Number.isNaN(value) ? '—' : value.toFixed(4));
 
-const getEditableField = (
+const getEditableFields = (
   component?: CircuitComponent
-): { key: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current'; label: string; metadata: ValueMetadata } | undefined => {
+): Array<{ key: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current' | 'forwardDrop' | 'beta' | 'thresholdVoltage' | 'gain' | 'highThreshold' | 'internalResistance' | 'rippleAmplitude'; label: string; metadata: ValueMetadata }> => {
   if (!component) {
-    return undefined;
+    return [];
   }
 
   switch (component.kind) {
     case 'resistor':
-      return { key: 'resistance', label: 'Resistance', metadata: component.resistance };
+      return [{ key: 'resistance', label: 'Resistance', metadata: component.resistance }];
     case 'capacitor':
-      return { key: 'capacitance', label: 'Capacitance', metadata: component.capacitance };
+      return [{ key: 'capacitance', label: 'Capacitance', metadata: component.capacitance }];
     case 'inductor':
-      return { key: 'inductance', label: 'Inductance', metadata: component.inductance };
+      return [{ key: 'inductance', label: 'Inductance', metadata: component.inductance }];
     case 'voltageSource':
-      return { key: 'voltage', label: 'Voltage', metadata: component.voltage };
+      return [
+        { key: 'voltage', label: 'Voltage', metadata: component.voltage },
+        ...(component.nonIdeal?.internalResistance ? [{ key: 'internalResistance' as const, label: 'Internal resistance', metadata: component.nonIdeal.internalResistance }] : []),
+        ...(component.nonIdeal?.rippleAmplitude ? [{ key: 'rippleAmplitude' as const, label: 'Ripple amplitude', metadata: component.nonIdeal.rippleAmplitude }] : [])
+      ];
     case 'currentSource':
-      return { key: 'current', label: 'Current', metadata: component.current };
+      return [
+        { key: 'current', label: 'Current', metadata: component.current },
+        ...(component.nonIdeal?.internalResistance ? [{ key: 'internalResistance' as const, label: 'Internal resistance', metadata: component.nonIdeal.internalResistance }] : []),
+        ...(component.nonIdeal?.rippleAmplitude ? [{ key: 'rippleAmplitude' as const, label: 'Ripple amplitude', metadata: component.nonIdeal.rippleAmplitude }] : [])
+      ];
+    case 'diode':
+      return [{ key: 'forwardDrop', label: 'Forward drop', metadata: component.forwardDrop }];
+    case 'bjt':
+      return [{ key: 'beta', label: 'Beta', metadata: component.beta }];
+    case 'mosfet':
+      return [{ key: 'thresholdVoltage', label: 'Threshold voltage', metadata: component.thresholdVoltage }];
+    case 'opAmp':
+      return [{ key: 'gain', label: 'Open-loop gain', metadata: component.gain }];
+    case 'logicGate':
+      return [{ key: 'highThreshold', label: 'Logic high threshold', metadata: component.bridge.highThreshold }];
     default:
-      return undefined;
+      return [];
   }
 };
 
@@ -72,7 +90,8 @@ const getEquationRowsForComponentValue = (component: CircuitComponent, valueKey:
 };
 
 export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, solveShortcutHint, onUpdateComponentValue, onValueApplied, onJumpToEquationRow }: PropertyPanelProps) => {
-  const editableField = getEditableField(selectedComponent);
+  const editableFields = getEditableFields(selectedComponent);
+  const editableField = editableFields[0];
   const [displayValue, setDisplayValue] = useState<string>('');
   const [prefix, setPrefix] = useState<Prefix>('');
   const [isValueUpdated, setIsValueUpdated] = useState(false);
@@ -128,46 +147,53 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
       {!selectedComponent && <p>Select a component to edit parameters.</p>}
 
       <div className={`field-group ${!selectedComponent || !editableField ? 'collapsed' : ''} ${isValueUpdated ? 'value-updated' : ''}`}>
-        {selectedComponent && editableField && (
+        {selectedComponent && editableFields.length > 0 && (
           <>
             <h3>{selectedComponent.label ?? selectedComponent.kind}</h3>
-            <label>
-              {editableField.label}
-              <div className="unit-input-row">
-                <input
-                  type="text"
-                  value={displayValue}
-                  placeholder={String(editableField.metadata.value ?? '')}
-                  onChange={(event) => setDisplayValue(event.target.value)}
-                />
-                <select value={prefix} onChange={(event) => setPrefix(event.target.value as Prefix)}>
-                  <option value="">(base)</option>
-                  <option value="µ">micro (µ)</option>
-                  <option value="m">milli (m)</option>
-                  <option value="k">kilo (k)</option>
-                  <option value="M">mega (M)</option>
-                </select>
-                <span>{editableField.metadata.unit}</span>
+            {editableFields.map((field) => (
+              <div key={field.key}>
+                <label>
+                  {field.label}
+                  <div className="unit-input-row">
+                    <input
+                      type="text"
+                      value={editableField?.key === field.key ? displayValue : ''}
+                      placeholder={String(field.metadata.value ?? '')}
+                      onFocus={() => {
+                        setDisplayValue('');
+                        setPrefix('');
+                      }}
+                      onChange={(event) => setDisplayValue(event.target.value)}
+                    />
+                    <select value={prefix} onChange={(event) => setPrefix(event.target.value as Prefix)}>
+                      <option value="">(base)</option>
+                      <option value="µ">micro (µ)</option>
+                      <option value="m">milli (m)</option>
+                      <option value="k">kilo (k)</option>
+                      <option value="M">mega (M)</option>
+                    </select>
+                    <span>{field.metadata.unit}</span>
+                  </div>
+                </label>
+                <button
+                  type="button"
+                  disabled={validationMessage != null || displayValue.length === 0}
+                  onClick={() => {
+                    const parsed = parseValueWithUnit(displayValue, { expectedUnit: field.metadata.unit, fallbackPrefix: prefix });
+                    if ('error' in parsed) {
+                      return;
+                    }
+                    onUpdateComponentValue(selectedComponent.id, field.key, parsed.value);
+                    setDisplayValue('');
+                    setPrefix('');
+                    setIsValueUpdated(true);
+                    onValueApplied();
+                  }}
+                >
+                  Apply
+                </button>
               </div>
-            </label>
-            <button
-              type="button"
-              disabled={validationMessage != null || displayValue.length === 0}
-              onClick={() => {
-                const parsed = parseValueWithUnit(displayValue, { expectedUnit: editableField.metadata.unit, fallbackPrefix: prefix });
-                if ('error' in parsed) {
-                  return;
-                }
-
-                onUpdateComponentValue(selectedComponent.id, editableField.key, parsed.value);
-                setDisplayValue('');
-                setPrefix('');
-                setIsValueUpdated(true);
-                onValueApplied();
-              }}
-            >
-              Apply
-            </button>
+            ))}
             {validationMessage && <p className="validation-error">{validationMessage}</p>}
           </>
         )}
