@@ -5,8 +5,8 @@ import { PropertyPanel } from './components/PropertyPanel';
 import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
 import type { CircuitComponent, ComponentKind, SolveCircuitResult, Unit, ValueMetadata } from './engine/model';
-import { simulateStep } from './engine/simulation';
-import { solveCircuit, solveCircuitValues } from './engine/solver';
+import { runAnalysis, simulateStep } from './engine/simulation';
+import { solveCircuitValues } from './engine/solver';
 import './styles/theme.css';
 import './styles/animations.css';
 
@@ -115,14 +115,14 @@ const App = () => {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setSolved(
-        solveCircuit({
+        runAnalysis({
           nodes: circuit.nodes.map((node) => ({
             id: node.id,
             reference: node.reference,
             voltage: node.reference ? { value: 0, known: true, computed: false, unit: 'V' } : undefined
           })),
           components: circuit.components
-        })
+        }).result
       );
     }, 140);
 
