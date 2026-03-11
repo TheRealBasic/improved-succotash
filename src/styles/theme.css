@@ -5,37 +5,125 @@
   color: #e4ecff;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
 }
 
-.app-shell {
-  padding: 1.5rem;
+#root {
+  height: 100vh;
 }
 
-.app-controls {
+.app-shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+.top-toolbar {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.top-toolbar h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.toolbar-main,
+.toolbar-secondary {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.app-controls label {
+.toolbar-secondary label {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .workspace {
+  min-height: 0;
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.inventory-sidebar {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+  padding-top: 0.5rem;
+}
+
+.sidebar-section h2 {
+  position: sticky;
+  top: -0.5rem;
+  z-index: 2;
+  margin: 0 0 0.5rem;
+  padding: 0.35rem 0;
+  background: rgba(22, 31, 65, 0.95);
+  border-bottom: 1px solid #2b3d7a;
+}
+
+.inventory-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sidebar-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.canvas-pane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.circuit-canvas {
+  min-height: 420px;
+  display: grid;
+  grid-template-rows: auto auto minmax(260px, 1fr) auto;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+
+.circuit-canvas h2,
+.circuit-canvas p {
+  margin-top: 0;
+}
+
+.canvas-surface {
+  width: 100%;
+  height: auto;
+  min-height: 320px;
+  max-height: 100%;
+  border: 1px solid #2f447d;
+  border-radius: 10px;
+  background: #0f1733;
 }
 
 .side-panels {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
 }
 
 .panel {
@@ -55,15 +143,12 @@ body {
   margin-top: 0.25rem;
 }
 
-.circuit-canvas .canvas-toolbar {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
-}
-
 .palette-item,
-.property-panel button {
+.property-panel button,
+.top-toolbar button,
+.top-toolbar select,
+.inventory-grid button,
+.timeline-item {
   border: 1px solid #3553a3;
   border-radius: 8px;
   background: #1e2f66;
@@ -77,14 +162,6 @@ body {
   border-color: #9a3649;
 }
 
-.canvas-surface {
-  width: 100%;
-  max-width: 100%;
-  border: 1px solid #2f447d;
-  border-radius: 10px;
-  background: #0f1733;
-}
-
 .component-label {
   font-size: 0.72rem;
   pointer-events: none;
@@ -93,6 +170,7 @@ body {
 .hint {
   opacity: 0.85;
   font-size: 0.85rem;
+  margin: 0;
 }
 
 .field-group,
@@ -124,16 +202,10 @@ body {
   color: #bfcfff;
 }
 
-.app-controls select,
-.app-controls button {
-  margin-right: 0.25rem;
-}
-
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
 }
 
 .status-grid p {
@@ -166,11 +238,7 @@ body {
 
 .timeline-item {
   text-align: left;
-  border: 1px solid #3553a3;
   background: #13224d;
-  color: #e6ecff;
-  border-radius: 8px;
-  padding: 0.35rem 0.55rem;
 }
 
 .timeline-item.active {
@@ -183,4 +251,38 @@ body {
   padding-left: 1.2rem;
   display: grid;
   gap: 0.25rem;
+}
+
+.menu-toggle {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  .inventory-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(320px, 84vw);
+    height: 100vh;
+    z-index: 20;
+    transform: translateX(-104%);
+    transition: transform 180ms ease;
+    border-radius: 0;
+  }
+
+  .inventory-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .canvas-pane {
+    min-height: 0;
+  }
 }

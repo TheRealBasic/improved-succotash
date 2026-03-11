@@ -113,6 +113,7 @@ const App = () => {
   const [focusedEquationRowId, setFocusedEquationRowId] = useState<string | undefined>(undefined);
   const [rerouteWiresOnMove, setRerouteWiresOnMove] = useState(true);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analysisState, setAnalysisState] = useState<'idle' | 'running' | 'converged' | 'warning' | 'error'>('idle');
   const previousAnalysisState = useRef<'idle' | 'running' | 'converged' | 'warning' | 'error'>('idle');
 
@@ -632,6 +633,13 @@ const App = () => {
     setTargetResult(result.target);
   };
 
+
+  const closeSidebarOnMobile = () => {
+    if (window.matchMedia('(max-width: 960px)').matches) {
+      setSidebarOpen(false);
+    }
+  };
+
   const simulationSnapshot = simulateStep(
     {
       voltage: solvedTriangle.voltage,
@@ -642,176 +650,206 @@ const App = () => {
 
   return (
     <main className="app-shell" onPointerDown={tryUnlockAudio}>
-      <h1>Circuit Workbench</h1>
-      <div className="app-controls panel">
-        <button
-          type="button"
-          onClick={() => {
-            const next = !simulationActive;
-            setSimulationActive(next);
-            playSfx(next ? 'start' : 'stop');
-          }}
-        >
-          {simulationActive ? 'Stop Simulation' : 'Start Simulation'}
-        </button>
-        <label>
-          Mode
-          <select value={mode} onChange={(event) => setMode(event.target.value as 'dc' | 'ac')}>
-            <option value="dc">DC Solve</option>
-            <option value="ac">AC preview</option>
-          </select>
-        </label>
-        <label>
-          Preset
-          <select onChange={(event) => loadPreset(event.target.value as keyof typeof circuitPresets)} defaultValue="">
-            <option value="" disabled>
-              Load example
-            </option>
-            <option value="starter">Starter</option>
-            <option value="voltageDivider">Voltage Divider</option>
-            <option value="currentLoop">Current Loop</option>
-          </select>
-        </label>
-        <button type="button" onClick={undo} disabled={!history.length}>
-          Undo
-        </button>
-        <button type="button" onClick={redo} disabled={!future.length}>
-          Redo
-        </button>
-        <button type="button" onClick={() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(circuit))}>
-          Save
-        </button>
-        <button type="button" onClick={() => setCircuit(normalizeCircuit(getInitialCircuit()))}>
-          Load
-        </button>
-        <button type="button" onClick={shareCircuit}>
-          Copy Share Link
-        </button>
-        <button type="button" onClick={() => window.navigator.clipboard.writeText(JSON.stringify(circuit, null, 2))}>
-          Export JSON
-        </button>
-        <button type="button" onClick={importCircuit}>
-          Import JSON
-        </button>
-        <button type="button" onClick={duplicateSelected} title={`Shortcut: ${shortcutLabel('duplicate')}`}>
-          Duplicate Selected
-        </button>
-        <button type="button" onClick={() => setShowShortcutHelp((value) => !value)} title={`Shortcut: ${shortcutLabel('help')}`}>
-          Keyboard Help
-        </button>
-        <label>
-          SFX Volume: {Math.round(sfxSettings.volume * 100)}%
-          <input type="range" min={0} max={100} value={Math.round(sfxSettings.volume * 100)} onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
-        </label>
-        <label>
-          SFX Theme
-          <select value={sfxSettings.themeProfile} onChange={(event) => setSfxThemeProfile(event.target.value as 'classic' | 'soft' | 'bright')}>
-            <option value="classic">Classic</option>
-            <option value="soft">Soft</option>
-            <option value="bright">Bright</option>
-          </select>
-        </label>
-        <label>
-          SFX Intensity
-          <select value={sfxSettings.intensity} onChange={(event) => setSfxIntensity(event.target.value as 'relaxed' | 'balanced' | 'high')}>
-            <option value="relaxed">Relaxed</option>
-            <option value="balanced">Balanced</option>
-            <option value="high">High</option>
-          </select>
-        </label>
-        <button type="button" onClick={() => setSfxAccessibilityMode(sfxSettings.accessibilityMode === 'all' ? 'alertsOnly' : 'all')}>
-          {sfxSettings.accessibilityMode === 'alertsOnly' ? 'Accessibility: Alerts only' : 'Accessibility: All cues'}
-        </button>
-        <button type="button" onClick={toggleSfxMute}>
-          {sfxSettings.muted ? 'Unmute SFX' : 'Mute SFX'}
-        </button>
-        {audioBlocked && <p className="hint">Audio is blocked by autoplay policy until user interaction.</p>}
-      </div>
-
-      <section className="status-grid panel">
-        <p>
-          <strong>Mode:</strong> {mode.toUpperCase()} {mode === 'ac' ? '(preview phase-shift animations only)' : ''}
-        </p>
-        <p>
-          <strong>Sim Time:</strong> {simulationSnapshot.time.toFixed(1)}s
-        </p>
-        <p>
-          <strong>Current:</strong> {simulationSnapshot.current.toFixed(4)} A
-        </p>
-        <p>
-          <strong>Solve for R:</strong> {solvedTriangle.summary}
-        </p>
-      </section>
+      <header className="top-toolbar panel">
+        <h1>Circuit Workbench</h1>
+        <div className="toolbar-main">
+          <button type="button" className="menu-toggle" onClick={() => setSidebarOpen((value) => !value)}>
+            {sidebarOpen ? 'Close Inventory' : 'Open Inventory'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !simulationActive;
+              setSimulationActive(next);
+              playSfx(next ? 'start' : 'stop');
+            }}
+          >
+            {simulationActive ? 'Stop' : 'Simulate'}
+          </button>
+          <button type="button" onClick={undo} disabled={!history.length}>
+            Undo
+          </button>
+          <button type="button" onClick={redo} disabled={!future.length}>
+            Redo
+          </button>
+          <button type="button" onClick={() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(circuit))}>
+            Save
+          </button>
+          <button type="button" onClick={() => setCircuit(normalizeCircuit(getInitialCircuit()))}>
+            Load
+          </button>
+        </div>
+        <div className="toolbar-secondary">
+          <label>
+            Mode
+            <select value={mode} onChange={(event) => setMode(event.target.value as 'dc' | 'ac')}>
+              <option value="dc">DC Solve</option>
+              <option value="ac">AC preview</option>
+            </select>
+          </label>
+          <label>
+            Preset
+            <select onChange={(event) => loadPreset(event.target.value as keyof typeof circuitPresets)} defaultValue="">
+              <option value="" disabled>
+                Load example
+              </option>
+              <option value="starter">Starter</option>
+              <option value="voltageDivider">Voltage Divider</option>
+              <option value="currentLoop">Current Loop</option>
+            </select>
+          </label>
+          <button type="button" onClick={shareCircuit}>Copy Link</button>
+          <button type="button" onClick={() => window.navigator.clipboard.writeText(JSON.stringify(circuit, null, 2))}>Export</button>
+          <button type="button" onClick={importCircuit}>Import</button>
+          <button type="button" onClick={duplicateSelected} title={`Shortcut: ${shortcutLabel('duplicate')}`}>
+            Duplicate
+          </button>
+          <button type="button" onClick={() => setShowShortcutHelp((value) => !value)} title={`Shortcut: ${shortcutLabel('help')}`}>
+            Shortcuts
+          </button>
+          <label>
+            SFX
+            <input type="range" min={0} max={100} value={Math.round(sfxSettings.volume * 100)} onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
+          </label>
+          <button type="button" onClick={toggleSfxMute}>{sfxSettings.muted ? 'Unmute' : 'Mute'}</button>
+          {audioBlocked && <p className="hint">Audio is blocked by autoplay policy until user interaction.</p>}
+        </div>
+      </header>
 
       <section className="workspace">
-        <CircuitCanvas
-          nodes={circuit.nodes}
-          components={circuit.components as CanvasComponent[]}
-          selectedNodeId={selectedNodeId}
-          selectedComponentId={selectedComponentId}
-          pendingWireFromNodeId={pendingWireFromNodeId}
-          simulationActive={simulationActive}
-          rerouteWiresOnMove={rerouteWiresOnMove}
-          onSetRerouteWiresOnMove={setRerouteWiresOnMove}
-          onAddComponentAt={addComponentAt}
-          onAddSubcircuitAt={addSubcircuitAt}
-          onGroupSelected={groupSelected}
-          onUngroupSelected={ungroupSelected}
-          onMoveNode={moveNode}
-          onDeleteSelected={deleteSelected}
-          onSelectNode={(nodeId) => {
-            setSelectedNodeId(nodeId);
-            setSelectedComponentId(undefined);
-          }}
-          onSelectComponent={(componentId) => {
-            setSelectedComponentId(componentId);
-            setSelectedNodeId(undefined);
-          }}
-          onStartOrCompleteWire={startOrCompleteWire}
-        />
-        <div className="side-panels">
-          <PropertyPanel
-            selectedComponent={selectedComponent}
-            selectedNodeId={selectedNodeId}
-            solved={solved}
-            targetResult={targetResult}
-            selectedTarget={selectedTarget}
-            onChangeSelectedTarget={(target) => {
-              if (target.type === 'node_voltage') {
-                setSelectedTarget({ type: 'node_voltage', nodeId: target.nodeId || selectedNodeId || 'gnd' });
-                return;
-              }
+        <aside className={`inventory-sidebar panel ${sidebarOpen ? 'is-open' : ''}`}>
+          <div className="sidebar-section">
+            <h2>Component Inventory</h2>
+            <div className="inventory-grid">
+              {[
+                { kind: 'resistor', label: 'Resistor', shortcutId: 'place-resistor' },
+                { kind: 'voltageSource', label: 'Voltage Source', shortcutId: 'place-voltage' },
+                { kind: 'currentSource', label: 'Current Source', shortcutId: 'place-current' },
+                { kind: 'capacitor', label: 'Capacitor', shortcutId: 'place-capacitor' },
+                { kind: 'inductor', label: 'Inductor', shortcutId: 'place-inductor' },
+                { kind: 'diode', label: 'Diode', shortcutId: 'place-diode' },
+                { kind: 'bjt', label: 'BJT', shortcutId: 'place-bjt' },
+                { kind: 'mosfet', label: 'MOSFET', shortcutId: 'place-mosfet' },
+                { kind: 'opAmp', label: 'Op-Amp', shortcutId: 'place-opamp' },
+                { kind: 'logicGate', label: 'Logic Gate', shortcutId: 'place-logic' },
+                { kind: 'subcircuit', label: 'Subcircuit', shortcutId: 'place-subcircuit' }
+              ].map((entry) => (
+                <button
+                  key={entry.kind}
+                  type="button"
+                  className="palette-item"
+                  draggable
+                  onDragStart={(event) => event.dataTransfer.setData('application/x-component-kind', entry.kind)}
+                  title={`Shortcut: ${shortcutLabel(entry.shortcutId)}`}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              setSelectedTarget({ type: target.type, componentId: target.componentId || selectedComponentId || '' });
-            }}
-            onSolveForTarget={solveForTarget}
-            solveShortcutHint={shortcutLabel('probe')}
-            onUpdateComponentValue={updateComponentValue}
-            onValueApplied={() => playSfx('connect')}
-            onJumpToEquationRow={setFocusedEquationRowId}
-          />
-          <EquationBreakdownPanel solved={solved} focusedRowId={focusedEquationRowId} onFocusRow={setFocusedEquationRowId} />
-          <aside className="panel timeline-panel">
-            <h2>Timeline</h2>
-            {timeline.map((entry, index) => (
-              <button key={`${entry.timestamp}-${index}`} type="button" className={`timeline-item ${index === timelineIndex ? 'active' : ''}`} onClick={() => jumpToTimelineIndex(index)}>
-                {index === timelineIndex ? '●' : '○'} {entry.action}
+          <div className="sidebar-section">
+            <h2>Canvas Actions</h2>
+            <div className="inventory-grid">
+              <button type="button" onClick={groupSelected} title={`Shortcut: ${shortcutLabel('group')}`}>Group</button>
+              <button type="button" onClick={ungroupSelected} title={`Shortcut: ${shortcutLabel('ungroup')}`}>Ungroup</button>
+              <label className="sidebar-checkbox">
+                <input type="checkbox" checked={rerouteWiresOnMove} onChange={(event) => setRerouteWiresOnMove(event.target.checked)} />
+                Reroute wires
+              </label>
+              <button type="button" onClick={deleteSelected} className="danger" title={`Shortcut: ${shortcutLabel('delete')}`}>
+                Delete Selected
               </button>
-            ))}
-          </aside>
-          {showShortcutHelp && (
-            <aside className="panel shortcut-help">
-              <h2>Keyboard Shortcuts</h2>
-              <ul>
-                {SHORTCUTS.map((shortcut) => (
-                  <li key={shortcut.id}>
-                    <strong>{shortcut.keys.join(' / ')}</strong>: {shortcut.description}
-                  </li>
-                ))}
-              </ul>
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h2>Status</h2>
+            <section className="status-grid">
+              <p>
+                <strong>Mode:</strong> {mode.toUpperCase()} {mode === 'ac' ? '(preview)' : ''}
+              </p>
+              <p>
+                <strong>Sim Time:</strong> {simulationSnapshot.time.toFixed(1)}s
+              </p>
+              <p>
+                <strong>Current:</strong> {simulationSnapshot.current.toFixed(4)} A
+              </p>
+              <p>
+                <strong>Solve for R:</strong> {solvedTriangle.summary}
+              </p>
+            </section>
+          </div>
+        </aside>
+
+        <section className="canvas-pane">
+          <CircuitCanvas
+            nodes={circuit.nodes}
+            components={circuit.components as CanvasComponent[]}
+            selectedNodeId={selectedNodeId}
+            selectedComponentId={selectedComponentId}
+            pendingWireFromNodeId={pendingWireFromNodeId}
+            simulationActive={simulationActive}
+            rerouteWiresOnMove={rerouteWiresOnMove}
+            onAddComponentAt={addComponentAt}
+            onAddSubcircuitAt={addSubcircuitAt}
+            onMoveNode={moveNode}
+            onSelectNode={(nodeId) => {
+              setSelectedNodeId(nodeId);
+              setSelectedComponentId(undefined);
+              closeSidebarOnMobile();
+            }}
+            onSelectComponent={(componentId) => {
+              setSelectedComponentId(componentId);
+              setSelectedNodeId(undefined);
+              closeSidebarOnMobile();
+            }}
+            onStartOrCompleteWire={startOrCompleteWire}
+          />
+          <div className="side-panels">
+            <PropertyPanel
+              selectedComponent={selectedComponent}
+              selectedNodeId={selectedNodeId}
+              solved={solved}
+              targetResult={targetResult}
+              selectedTarget={selectedTarget}
+              onChangeSelectedTarget={(target) => {
+                if (target.type === 'node_voltage') {
+                  setSelectedTarget({ type: 'node_voltage', nodeId: target.nodeId || selectedNodeId || 'gnd' });
+                  return;
+                }
+
+                setSelectedTarget({ type: target.type, componentId: target.componentId || selectedComponentId || '' });
+              }}
+              onSolveForTarget={solveForTarget}
+              solveShortcutHint={shortcutLabel('probe')}
+              onUpdateComponentValue={updateComponentValue}
+              onValueApplied={() => playSfx('connect')}
+              onJumpToEquationRow={setFocusedEquationRowId}
+            />
+            <EquationBreakdownPanel solved={solved} focusedRowId={focusedEquationRowId} onFocusRow={setFocusedEquationRowId} />
+            <aside className="panel timeline-panel">
+              <h2>Timeline</h2>
+              {timeline.map((entry, index) => (
+                <button key={`${entry.timestamp}-${index}`} type="button" className={`timeline-item ${index === timelineIndex ? 'active' : ''}`} onClick={() => jumpToTimelineIndex(index)}>
+                  {index === timelineIndex ? '●' : '○'} {entry.action}
+                </button>
+              ))}
             </aside>
-          )}
-        </div>
+            {showShortcutHelp && (
+              <aside className="panel shortcut-help">
+                <h2>Keyboard Shortcuts</h2>
+                <ul>
+                  {SHORTCUTS.map((shortcut) => (
+                    <li key={shortcut.id}>
+                      <strong>{shortcut.keys.join(' / ')}</strong>: {shortcut.description}
+                    </li>
+                  ))}
+                </ul>
+              </aside>
+            )}
+          </div>
+        </section>
       </section>
     </main>
   );
