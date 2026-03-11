@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CircuitComponent, SolveCircuitResult, SolveTarget, TargetSolveResult, ValueMetadata } from '../engine/model';
+import { getDiagnosticGuidance } from '../engine/solver';
 import { ANIMATION_MS } from '../styles/animations';
 
 const PREFIX_FACTORS = {
@@ -192,11 +193,20 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
       <div className="computed-block">
         <h3>Warnings / Diagnostics</h3>
         {solved.diagnostics.length === 0 && <p className="readonly">No diagnostics.</p>}
-        {solved.diagnostics.map((diagnostic) => (
-          <p key={`${diagnostic.code}-${diagnostic.message}`} className={`diag-${diagnostic.severity}`}>
-            [{diagnostic.severity}] {diagnostic.message}
-          </p>
-        ))}
+        {solved.diagnostics.map((diagnostic) => {
+          const guidance = getDiagnosticGuidance(diagnostic);
+          return (
+            <div key={`${diagnostic.code}-${diagnostic.message}`} className={`diag-${diagnostic.severity}`}>
+              <p>[{diagnostic.severity}] {diagnostic.message}</p>
+              {guidance && (
+                <>
+                  <p><strong>Why:</strong> {guidance.why}</p>
+                  <p><strong>Suggested fix:</strong> {guidance.suggestedFix}</p>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </aside>
   );

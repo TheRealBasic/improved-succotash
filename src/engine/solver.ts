@@ -26,6 +26,41 @@ export type CircuitValues = {
 
 export type SolvedCircuitValues = Required<CircuitValues> & { summary: string };
 
+export type DiagnosticGuidance = {
+  why: string;
+  suggestedFix: string;
+};
+
+const diagnosticGuidanceByCode: Partial<Record<SolverDiagnostic['code'], DiagnosticGuidance>> = {
+  missing_reference_node: {
+    why: 'Nodal analysis needs at least one reference potential to anchor every node voltage.',
+    suggestedFix: 'Mark one node as reference/ground (0 V) before solving.'
+  },
+  floating_node_groups: {
+    why: 'One or more node groups are electrically isolated from the reference path, so their voltages can drift together.',
+    suggestedFix: 'Connect each floating group to the grounded network using a source, resistor, or wire.'
+  },
+  conflicting_ideal_voltage_sources: {
+    why: 'Ideal voltage sources are forcing incompatible voltages across the same pair of nodes.',
+    suggestedFix: 'Align source magnitudes/polarity or remove one conflicting source constraint.'
+  },
+  missing_constitutive_value: {
+    why: 'An active/reactive component has no constitutive parameter, so the solver cannot form its equation.',
+    suggestedFix: 'Enter a valid non-empty value (R/C/L/V/I) on the highlighted component.'
+  },
+  underdetermined: {
+    why: 'There are fewer independent equations than unknowns, so the solution is not unique.',
+    suggestedFix: 'Add grounding or additional component constraints to fully determine all unknowns.'
+  },
+  overdetermined: {
+    why: 'The equation set includes contradictory constraints, so no solution satisfies all of them.',
+    suggestedFix: 'Remove or correct conflicting constraints such as incompatible source settings.'
+  }
+};
+
+export const getDiagnosticGuidance = (diagnostic: SolverDiagnostic): DiagnosticGuidance | undefined =>
+  diagnosticGuidanceByCode[diagnostic.code];
+
 const componentUnits: Partial<Record<CircuitComponent['kind'], Unit>> = {
   resistor: 'Ω',
   capacitor: 'F',
@@ -97,7 +132,13 @@ const validateCircuit = (circuit: CircuitState): SolverDiagnostic[] => {
     const expectedUnit = componentUnits[component.kind];
     if (expectedUnit != null) {
       const valueMetadata = getComponentValueMetadata(component);
-      if (valueMetadata == null) {
+      if (valueMetadata == null || valueMetadata.value == null) {
+        diagnostics.push({
+          code: 'missing_constitutive_value',
+          severity: 'error',
+          message: `Component ${component.id} is missing a required ${component.kind} value.`,
+          componentId: component.id
+        });
         continue;
       }
 
@@ -153,6 +194,36 @@ const validateCircuit = (circuit: CircuitState): SolverDiagnostic[] => {
           code: 'disconnected_graph',
           severity: 'error',
           message: 'Circuit graph is disconnected. All nodes must be connected.'
+        });
+
+        const unvisited = circuit.nodes.map((node) => node.id).filter((nodeId) => !visited.has(nodeId));
+        const groups: string[][] = [];
+        const pending = new Set(unvisited);
+        while (pending.size > 0) {
+          const seed = pending.values().next().value as string;
+          pending.delete(seed);
+          const group = [seed];
+          const q = [seed];
+          while (q.length > 0) {
+            const current = q.shift();
+            if (current == null) {
+              continue;
+            }
+            for (const neighbor of adjacency.get(current) ?? []) {
+              if (pending.has(neighbor)) {
+                pending.delete(neighbor);
+                group.push(neighbor);
+                q.push(neighbor);
+              }
+            }
+          }
+          groups.push(group);
+        }
+
+        diagnostics.push({
+          code: 'floating_node_groups',
+          severity: 'error',
+          message: `Floating node group(s): ${groups.map((group) => group.join(', ')).join(' | ')}.`
         });
       }
     }
@@ -378,6 +449,43 @@ const toSolvedValue = (key: string, unit: Unit, value: number | undefined, known
   computed
 });
 
+const findConflictingIdealVoltageSources = (circuitState: CircuitState): SolverDiagnostic[] => {
+  const grouped = new Map<string, Array<{ id: string; value: number }>>();
+
+  for (const component of circuitState.components) {
+    if (component.kind !== 'voltageSource') {
+      continue;
+    }
+    const value = component.voltage.value;
+    if (value == null) {
+      continue;
+    }
+
+    const key = [component.from, component.to].sort().join('::');
+    const orientedValue = component.from < component.to ? value : -value;
+    const bucket = grouped.get(key) ?? [];
+    bucket.push({ id: component.id, value: orientedValue });
+    grouped.set(key, bucket);
+  }
+
+  const diagnostics: SolverDiagnostic[] = [];
+  for (const [pairKey, entries] of grouped) {
+    if (entries.length < 2) {
+      continue;
+    }
+    const first = entries[0]?.value;
+    if (entries.some((entry) => Math.abs(entry.value - (first ?? 0)) > 1e-9)) {
+      diagnostics.push({
+        code: 'conflicting_ideal_voltage_sources',
+        severity: 'error',
+        message: `Conflicting ideal voltage sources across node pair ${pairKey}: ${entries.map((entry) => `${entry.id}=${entry.value}`).join(', ')}.`
+      });
+    }
+  }
+
+  return diagnostics;
+};
+
 const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
   const diagnostics = validateCircuit(circuitState);
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === 'error');
@@ -401,6 +509,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       severity: 'error',
       message: 'Circuit equations are inconsistent (overdetermined).'
     });
+    diagnostics.push(...findConflictingIdealVoltageSources(circuitState));
   } else if (rankA < variableCount) {
     diagnostics.push({
       code: 'underdetermined',
