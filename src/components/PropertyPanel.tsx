@@ -23,6 +23,7 @@ type PropertyPanelProps = {
   onSolveForTarget: () => void;
   onUpdateComponentValue: (componentId: string, valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current', value: number) => void;
   onValueApplied: () => void;
+  onJumpToEquationRow?: (rowId: string) => void;
 };
 
 const formatValue = (value?: number): string => (value == null || Number.isNaN(value) ? '—' : value.toFixed(4));
@@ -50,7 +51,25 @@ const getEditableField = (
   }
 };
 
-export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, onUpdateComponentValue, onValueApplied }: PropertyPanelProps) => {
+const getEquationRowsForComponentValue = (component: CircuitComponent, valueKey: string, solved: SolveCircuitResult): string[] => {
+  const rows = solved.equationTrace ?? [];
+  return rows
+    .filter((row) => {
+      if (row.constrainedComponentId === component.id) {
+        return true;
+      }
+      if (row.terms.some((term) => term.componentId === component.id) || row.constants.some((term) => term.componentId === component.id)) {
+        return true;
+      }
+      if (valueKey.endsWith(':voltage') && row.kclNodeId != null) {
+        return row.kclNodeId === component.from || row.kclNodeId === component.to;
+      }
+      return false;
+    })
+    .map((row) => row.rowId);
+};
+
+export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, onUpdateComponentValue, onValueApplied, onJumpToEquationRow }: PropertyPanelProps) => {
   const editableField = getEditableField(selectedComponent);
   const [displayValue, setDisplayValue] = useState<string>('');
   const [prefix, setPrefix] = useState<Prefix>('');
@@ -183,11 +202,25 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
       <div className={`computed-block ${isValueUpdated ? 'value-updated' : ''}`}>
         <h3>Computed values</h3>
         {computedValues.length === 0 && <p className="readonly">No computed values available yet.</p>}
-        {computedValues.map((entry) => (
-          <p className="readonly" key={entry.key}>
-            {entry.key.split(':').slice(-1)[0]}: {formatValue(entry.value)} {entry.unit}
-          </p>
-        ))}
+        {computedValues.map((entry) => {
+          const linkedRows = selectedComponent ? getEquationRowsForComponentValue(selectedComponent, entry.key, solved) : [];
+          return (
+            <div key={entry.key}>
+              <p className="readonly">
+                {entry.key.split(':').slice(-1)[0]}: {formatValue(entry.value)} {entry.unit}
+              </p>
+              {linkedRows.length > 0 && (
+                <div className="equation-links">
+                  {linkedRows.slice(0, 3).map((rowId) => (
+                    <button key={`${entry.key}-${rowId}`} type="button" onClick={() => onJumpToEquationRow?.(rowId)}>
+                      Jump to {rowId}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="computed-block">

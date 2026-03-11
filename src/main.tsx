@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CircuitCanvas, type CanvasComponent } from './components/CircuitCanvas';
+import { EquationBreakdownPanel } from './components/EquationBreakdownPanel';
 import { PropertyPanel } from './components/PropertyPanel';
 import { getSfxSettings, isSfxBlocked, playSfx, setSfxVolume, subscribeToSfxSettings, toggleSfxMute, unlockSfx } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
@@ -80,6 +81,7 @@ const App = () => {
   const [mode, setMode] = useState<'dc' | 'ac'>('dc');
   const [sfxSettings, setSfxSettings] = useState(getSfxSettings());
   const [audioBlocked, setAudioBlocked] = useState(isSfxBlocked());
+  const [focusedEquationRowId, setFocusedEquationRowId] = useState<string | undefined>(undefined);
 
   const selectedComponent = useMemo(
     () => circuit.components.find((component) => component.id === selectedComponentId),
@@ -164,6 +166,14 @@ const App = () => {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
+
+  useEffect(() => {
+    if (!focusedEquationRowId) {
+      return;
+    }
+    const rowElement = document.getElementById(`eq-row-${focusedEquationRowId}`);
+    rowElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusedEquationRowId]);
 
   const undo = () => {
     setHistory((prev) => {
@@ -462,24 +472,28 @@ const App = () => {
           }}
           onStartOrCompleteWire={startOrCompleteWire}
         />
-        <PropertyPanel
-          selectedComponent={selectedComponent}
-          selectedNodeId={selectedNodeId}
-          solved={solved}
-          targetResult={targetResult}
-          selectedTarget={selectedTarget}
-          onChangeSelectedTarget={(target) => {
-            if (target.type === 'node_voltage') {
-              setSelectedTarget({ type: 'node_voltage', nodeId: target.nodeId || selectedNodeId || 'gnd' });
-              return;
-            }
+        <div className="side-panels">
+          <PropertyPanel
+            selectedComponent={selectedComponent}
+            selectedNodeId={selectedNodeId}
+            solved={solved}
+            targetResult={targetResult}
+            selectedTarget={selectedTarget}
+            onChangeSelectedTarget={(target) => {
+              if (target.type === 'node_voltage') {
+                setSelectedTarget({ type: 'node_voltage', nodeId: target.nodeId || selectedNodeId || 'gnd' });
+                return;
+              }
 
-            setSelectedTarget({ type: target.type, componentId: target.componentId || selectedComponentId || '' });
-          }}
-          onSolveForTarget={solveForTarget}
-          onUpdateComponentValue={updateComponentValue}
-          onValueApplied={() => playSfx('connect')}
-        />
+              setSelectedTarget({ type: target.type, componentId: target.componentId || selectedComponentId || '' });
+            }}
+            onSolveForTarget={solveForTarget}
+            onUpdateComponentValue={updateComponentValue}
+            onValueApplied={() => playSfx('connect')}
+            onJumpToEquationRow={setFocusedEquationRowId}
+          />
+          <EquationBreakdownPanel solved={solved} focusedRowId={focusedEquationRowId} onFocusRow={setFocusedEquationRowId} />
+        </div>
       </section>
     </main>
   );

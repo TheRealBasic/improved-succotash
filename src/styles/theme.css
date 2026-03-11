@@ -33,6 +33,11 @@ body {
   grid-template-columns: 2fr 1fr;
 }
 
+.side-panels {
+  display: grid;
+  gap: 1rem;
+}
+
 .panel {
   border: 1px solid #2b3d7a;
   background: rgba(22, 31, 65, 0.75);
@@ -133,4 +138,23 @@ body {
 
 .status-grid p {
   margin: 0;
+}
+
+.equation-row {
+  border: 1px solid #2f447d;
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.equation-row-focused {
+  border-color: #66c8ff;
+  box-shadow: 0 0 0 1px #66c8ff;
+}
+
+.equation-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
 }

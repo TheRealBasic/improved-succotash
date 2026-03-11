@@ -98,6 +98,7 @@ describe('PropertyPanel updates and rendering', () => {
   });
 
   it('renders computed values and diagnostics visibility', () => {
+    const onJumpToEquationRow = vi.fn();
     const solved: SolveCircuitResult = {
       values: {
         'component:r1:current': {
@@ -114,6 +115,24 @@ describe('PropertyPanel updates and rendering', () => {
           severity: 'error',
           message: 'Circuit equations are underdetermined. Add more constraints/components.'
         }
+      ],
+      equationTrace: [
+        {
+          rowIndex: 0,
+          rowId: 'kcl:n1',
+          rowType: 'kcl',
+          kclNodeId: 'n1',
+          terms: [
+            {
+              componentId: 'r1',
+              variableKey: 'V:n1',
+              coefficient: 0.01,
+              description: 'r1 conductance @ n1'
+            }
+          ],
+          constants: [],
+          rhs: 0
+        }
       ]
     };
 
@@ -126,6 +145,7 @@ describe('PropertyPanel updates and rendering', () => {
         onSolveForTarget={vi.fn()}
         onUpdateComponentValue={vi.fn()}
         onValueApplied={vi.fn()}
+        onJumpToEquationRow={onJumpToEquationRow}
       />
     );
 
@@ -133,5 +153,7 @@ describe('PropertyPanel updates and rendering', () => {
     expect(screen.getByText(/\[error\] Circuit equations are underdetermined/i)).toBeTruthy();
     expect(screen.getByText(/why:/i)).toBeTruthy();
     expect(screen.getByText(/suggested fix:/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /jump to kcl:n1/i }));
+    expect(onJumpToEquationRow).toHaveBeenCalledWith('kcl:n1');
   });
 });
