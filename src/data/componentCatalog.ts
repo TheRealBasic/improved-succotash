@@ -61,6 +61,13 @@ export type ComponentCatalogItem = {
   packageHint?: string;
   footprintHint?: string;
   compatibilityTags?: string[];
+  metadata?: {
+    aliases?: string[];
+    shortcut?: {
+      key: string;
+      id?: string;
+    };
+  };
   sidebar?: {
     category: string;
     subcategory: string;
@@ -192,6 +199,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'resistor', propertyMap: { resistance: 'resistance' } },
     defaultProps: { resistanceOhms: 1000 },
+    metadata: {
+      aliases: ['R'],
+      shortcut: { key: 'R' }
+    },
     sidebar: { category: 'passive', subcategory: 'generic' }
   },
   {
@@ -208,6 +219,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'capacitor', propertyMap: { capacitance: 'capacitance' } },
     defaultProps: { capacitanceFarads: 0.000001 },
+    metadata: {
+      aliases: ['C'],
+      shortcut: { key: 'C' }
+    },
     sidebar: { category: 'passive', subcategory: 'generic' }
   },
   {
@@ -224,6 +239,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'inductor', propertyMap: { inductance: 'inductance' } },
     defaultProps: { inductanceHenries: 0.001 },
+    metadata: {
+      aliases: ['L', 'Coil'],
+      shortcut: { key: 'L' }
+    },
     sidebar: { category: 'passive', subcategory: 'generic' }
   },
   {
@@ -242,6 +261,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'voltage-source', propertyMap: { voltage: 'voltage', internalResistance: 'nonIdeal.internalResistance', rippleAmplitude: 'nonIdeal.rippleAmplitude' } },
     defaultProps: { voltageVolts: 5 },
+    metadata: {
+      aliases: ['VSource', 'Supply'],
+      shortcut: { key: 'V' }
+    },
     sidebar: { category: 'sources', subcategory: 'dc' }
   },
   {
@@ -260,6 +283,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'current-source', propertyMap: { current: 'current', internalResistance: 'nonIdeal.internalResistance', rippleAmplitude: 'nonIdeal.rippleAmplitude' } },
     defaultProps: { currentAmps: 0.001 },
+    metadata: {
+      aliases: ['ISource'],
+      shortcut: { key: 'I' }
+    },
     sidebar: { category: 'sources', subcategory: 'dc' }
   },
   {
@@ -276,6 +303,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'diode', propertyMap: { forwardDrop: 'forwardDrop' } },
     defaultProps: { forwardDropVolts: 0.7 },
+    metadata: {
+      aliases: ['Rectifier'],
+      shortcut: { key: 'O' }
+    },
     sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
   },
   {
@@ -292,6 +323,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'bjt', propertyMap: { beta: 'beta' } },
     defaultProps: { beta: 100 },
+    metadata: {
+      aliases: ['Transistor'],
+      shortcut: { key: 'B' }
+    },
     sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
   {
@@ -308,6 +343,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'mosfet', propertyMap: { thresholdVoltage: 'thresholdVoltage' } },
     defaultProps: { thresholdVoltageVolts: 2.5 },
+    metadata: {
+      aliases: ['FET'],
+      shortcut: { key: 'M' }
+    },
     sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
   {
@@ -324,6 +363,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'op-amp', propertyMap: { gain: 'gain' } },
     defaultProps: { openLoopGain: 100000 },
+    metadata: {
+      aliases: ['Operational Amplifier'],
+      shortcut: { key: 'P', id: 'place-opamp' }
+    },
     sidebar: { category: 'ics', subcategory: 'op-amps' }
   },
   {
@@ -341,6 +384,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     },
     solverBehavior: { model: 'logic-gate', propertyMap: { gateType: 'gateType', highThreshold: 'bridge.highThreshold' } },
     defaultProps: { family: 'CMOS', gateType: 'nand' },
+    metadata: {
+      aliases: ['Gate'],
+      shortcut: { key: 'T', id: 'place-logic' }
+    },
     sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
   },
   {
@@ -413,6 +460,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     tags: ['hierarchy', 'macro', 'module'],
     pinCount: 0,
     defaultProps: { collapsed: true },
+    metadata: {
+      aliases: ['Macro'],
+      shortcut: { key: 'S' }
+    },
     sidebar: { category: 'specialty', subcategory: 'hierarchy' }
   }
 ];
@@ -443,6 +494,8 @@ export const validateComponentCatalog = (
   validCategories: readonly ComponentCategory[] = COMPONENT_CATEGORY_ORDER
 ): void => {
   const ids = new Set<string>();
+  const aliasesToItem = new Map<string, string>();
+  const shortcutKeyToItem = new Map<string, string>();
   const errors: string[] = [];
 
   for (const item of items) {
@@ -453,6 +506,36 @@ export const validateComponentCatalog = (
 
     if (!validCategories.includes(item.category)) {
       errors.push(`Invalid category "${item.category}" on item "${item.id}"`);
+    }
+
+    if (item.metadata?.aliases) {
+      for (const alias of item.metadata.aliases) {
+        const normalizedAlias = alias.trim().toLowerCase();
+        if (!normalizedAlias) {
+          continue;
+        }
+
+        const previous = aliasesToItem.get(normalizedAlias);
+        if (previous && previous !== item.id) {
+          errors.push(`Duplicate alias "${alias}" on item "${item.id}" (already used by "${previous}")`);
+        } else {
+          aliasesToItem.set(normalizedAlias, item.id);
+        }
+      }
+    }
+
+    if (item.metadata?.shortcut?.key) {
+      const normalizedShortcut = item.metadata.shortcut.key.trim().toLowerCase();
+      if (normalizedShortcut) {
+        const previous = shortcutKeyToItem.get(normalizedShortcut);
+        if (previous && previous !== item.id) {
+          errors.push(
+            `Duplicate placement shortcut key "${item.metadata.shortcut.key}" on item "${item.id}" (already used by "${previous}")`
+          );
+        } else {
+          shortcutKeyToItem.set(normalizedShortcut, item.id);
+        }
+      }
     }
 
     if (item.sidebar) {
