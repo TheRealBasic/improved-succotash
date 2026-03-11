@@ -365,6 +365,14 @@ body {
   padding: 0.45rem;
 }
 
+
+.inventory-grid-virtualized {
+  overflow-y: auto;
+}
+
+.inventory-grid-virtualized .palette-item {
+  min-height: 36px;
+}
 .palette-item small {
   opacity: 0.85;
   margin-left: 0.4rem;

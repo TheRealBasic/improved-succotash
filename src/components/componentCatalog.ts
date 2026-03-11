@@ -13,6 +13,7 @@ export type ComponentCatalogEntry = {
   tags: string[];
   partNumber?: string;
   shortcutId?: string;
+  searchTokens: string[];
 };
 
 export type ComponentCatalogSubcategory = {
@@ -81,36 +82,52 @@ const categoryLabel = (id: string): string => SIDEBAR_GROUPING_MAP[id]?.label ??
 const subcategoryLabel = (categoryId: string, subcategoryId: string): string =>
   SIDEBAR_GROUPING_MAP[categoryId]?.subcategories[subcategoryId]?.label ?? subcategoryId;
 
-export const COMPONENT_CATALOG: ComponentCatalogCategory[] = Object.entries(
-  SORTED_COMPONENT_CATALOG_ITEMS.reduce<Record<string, Record<string, ComponentCatalogEntry[]>>>((grouped, item) => {
-    const sidebarPath = resolveSidebarPath(item);
-    grouped[sidebarPath.categoryId] ??= {};
-    grouped[sidebarPath.categoryId][sidebarPath.subcategoryId] ??= [];
-    grouped[sidebarPath.categoryId][sidebarPath.subcategoryId].push({
-      id: item.id,
-      kind: item.kind,
-      label: item.displayName,
-      aliases: item.metadata?.aliases ?? [item.partNumber ?? item.displayName],
-      tags: item.tags,
-      partNumber: item.partNumber,
-      shortcutId: item.metadata?.shortcut ? item.metadata.shortcut.id ?? `place-${item.id}` : undefined
-    });
-    return grouped;
-  }, {})
-)
-  .sort(([left], [right]) => categoryOrder(left) - categoryOrder(right) || left.localeCompare(right))
-  .map(([id, subcategoryMap]) => ({
-    id,
-    label: categoryLabel(id),
-    subcategories: Object.entries(subcategoryMap)
-      .sort(
-        ([left], [right]) =>
-          subcategoryOrder(id, left) - subcategoryOrder(id, right) ||
-          subcategoryLabel(id, left).localeCompare(subcategoryLabel(id, right))
-      )
-      .map(([subcategoryId, entries]) => ({
-        id: `${id}::${subcategoryId}`,
-        label: subcategoryLabel(id, subcategoryId),
-        entries
-      }))
-  }));
+const normalizeSearchToken = (value: string): string => value.trim().toLowerCase();
+
+const indexedSearchTokens = (item: ComponentCatalogItem, aliases: string[]): string[] =>
+  Array.from(
+    new Set(
+      [item.id, item.displayName, ...aliases, ...item.tags, item.partNumber ?? '']
+        .map(normalizeSearchToken)
+        .filter(Boolean)
+    )
+  );
+
+export const buildComponentCatalog = (items: ComponentCatalogItem[]): ComponentCatalogCategory[] =>
+  Object.entries(
+    items.reduce<Record<string, Record<string, ComponentCatalogEntry[]>>>((grouped, item) => {
+      const aliases = item.metadata?.aliases ?? [item.partNumber ?? item.displayName];
+      const sidebarPath = resolveSidebarPath(item);
+      grouped[sidebarPath.categoryId] ??= {};
+      grouped[sidebarPath.categoryId][sidebarPath.subcategoryId] ??= [];
+      grouped[sidebarPath.categoryId][sidebarPath.subcategoryId].push({
+        id: item.id,
+        kind: item.kind,
+        label: item.displayName,
+        aliases,
+        tags: item.tags,
+        partNumber: item.partNumber,
+        shortcutId: item.metadata?.shortcut ? item.metadata.shortcut.id ?? `place-${item.id}` : undefined,
+        searchTokens: indexedSearchTokens(item, aliases)
+      });
+      return grouped;
+    }, {})
+  )
+    .sort(([left], [right]) => categoryOrder(left) - categoryOrder(right) || left.localeCompare(right))
+    .map(([id, subcategoryMap]) => ({
+      id,
+      label: categoryLabel(id),
+      subcategories: Object.entries(subcategoryMap)
+        .sort(
+          ([left], [right]) =>
+            subcategoryOrder(id, left) - subcategoryOrder(id, right) ||
+            subcategoryLabel(id, left).localeCompare(subcategoryLabel(id, right))
+        )
+        .map(([subcategoryId, entries]) => ({
+          id: `${id}::${subcategoryId}`,
+          label: subcategoryLabel(id, subcategoryId),
+          entries
+        }))
+    }));
+
+export const COMPONENT_CATALOG: ComponentCatalogCategory[] = buildComponentCatalog(SORTED_COMPONENT_CATALOG_ITEMS);
