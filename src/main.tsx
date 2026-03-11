@@ -532,10 +532,10 @@ const App = () => {
     }, 'Ungroup selected');
   };
 
-  const updateComponentValue = (
+  const updateComponentProperty = (
     componentId: string,
-    valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current' | 'forwardDrop' | 'beta' | 'thresholdVoltage' | 'gain' | 'highThreshold' | 'internalResistance' | 'rippleAmplitude',
-    value: number
+    valueKey: string,
+    value: number | string | boolean
   ) => {
     applyCircuitUpdate((current) => ({
       ...current,
@@ -544,44 +544,47 @@ const App = () => {
           return component;
         }
 
-        if (valueKey === 'resistance' && component.catalogTypeId === 'resistor') {
+        if (valueKey === 'resistance' && component.catalogTypeId === 'resistor' && typeof value === 'number') {
           return { ...component, resistance: { ...component.resistance, value } };
         }
-        if (valueKey === 'capacitance' && component.catalogTypeId === 'capacitor') {
+        if (valueKey === 'capacitance' && component.catalogTypeId === 'capacitor' && typeof value === 'number') {
           return { ...component, capacitance: { ...component.capacitance, value } };
         }
-        if (valueKey === 'inductance' && component.catalogTypeId === 'inductor') {
+        if (valueKey === 'inductance' && component.catalogTypeId === 'inductor' && typeof value === 'number') {
           return { ...component, inductance: { ...component.inductance, value } };
         }
-        if (valueKey === 'voltage' && component.catalogTypeId === 'voltage-source') {
+        if (valueKey === 'voltage' && component.catalogTypeId === 'voltage-source' && typeof value === 'number') {
           return { ...component, voltage: { ...component.voltage, value } };
         }
-        if (valueKey === 'current' && component.catalogTypeId === 'current-source') {
+        if (valueKey === 'current' && component.catalogTypeId === 'current-source' && typeof value === 'number') {
           return { ...component, current: { ...component.current, value } };
         }
-        if (valueKey === 'internalResistance' && (component.catalogTypeId === 'current-source' || component.catalogTypeId === 'voltage-source')) {
+        if (valueKey === 'internalResistance' && (component.catalogTypeId === 'current-source' || component.catalogTypeId === 'voltage-source') && typeof value === 'number') {
           return { ...component, nonIdeal: { ...component.nonIdeal, internalResistance: { ...(component.nonIdeal?.internalResistance ?? createValueMetadata('Ω', 0)), value } } };
         }
-        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'voltage-source') {
+        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'voltage-source' && typeof value === 'number') {
           return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('V', 0)), value } } };
         }
-        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'current-source') {
+        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'current-source' && typeof value === 'number') {
           return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('A', 0)), value } } };
         }
-        if (valueKey === 'forwardDrop' && component.catalogTypeId === 'diode') {
+        if (valueKey === 'forwardDrop' && component.catalogTypeId === 'diode' && typeof value === 'number') {
           return { ...component, forwardDrop: { ...component.forwardDrop, value } };
         }
-        if (valueKey === 'beta' && component.catalogTypeId === 'bjt') {
+        if (valueKey === 'beta' && component.catalogTypeId === 'bjt' && typeof value === 'number') {
           return { ...component, beta: { ...component.beta, value } };
         }
-        if (valueKey === 'thresholdVoltage' && component.catalogTypeId === 'mosfet') {
+        if (valueKey === 'thresholdVoltage' && component.catalogTypeId === 'mosfet' && typeof value === 'number') {
           return { ...component, thresholdVoltage: { ...component.thresholdVoltage, value } };
         }
-        if (valueKey === 'gain' && component.catalogTypeId === 'op-amp') {
+        if (valueKey === 'gain' && component.catalogTypeId === 'op-amp' && typeof value === 'number') {
           return { ...component, gain: { ...component.gain, value } };
         }
-        if (valueKey === 'highThreshold' && component.catalogTypeId === 'logic-gate') {
+        if (valueKey === 'highThreshold' && component.catalogTypeId === 'logic-gate' && typeof value === 'number') {
           return { ...component, bridge: { ...component.bridge, highThreshold: { ...component.bridge.highThreshold, value } } };
+        }
+        if (valueKey === 'gateType' && component.catalogTypeId === 'logic-gate' && typeof value === 'string') {
+          return { ...component, gateType: value as typeof component.gateType };
         }
 
         return component;
@@ -798,7 +801,7 @@ const App = () => {
               }}
               onSolveForTarget={solveForTarget}
               solveShortcutHint={shortcutLabel('probe')}
-              onUpdateComponentValue={updateComponentValue}
+              onUpdateComponentProperty={updateComponentProperty}
               onValueApplied={() => playSfx('connect')}
               onJumpToEquationRow={setFocusedEquationRowId}
             />

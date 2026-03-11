@@ -76,7 +76,7 @@ describe('PropertyPanel updates and rendering', () => {
   };
 
   it('parses compact value+unit input and applies normalized value', () => {
-    const onUpdateComponentValue = vi.fn();
+    const onUpdateComponentProperty = vi.fn();
     const onValueApplied = vi.fn();
 
     const { container } = render(
@@ -86,7 +86,7 @@ describe('PropertyPanel updates and rendering', () => {
         selectedTarget={{ type: 'component_value', componentId: 'r1' }}
         onChangeSelectedTarget={vi.fn()}
         onSolveForTarget={vi.fn()}
-        onUpdateComponentValue={onUpdateComponentValue}
+        onUpdateComponentProperty={onUpdateComponentProperty}
         onValueApplied={onValueApplied}
       />
     );
@@ -94,7 +94,7 @@ describe('PropertyPanel updates and rendering', () => {
     fireEvent.change(within(container).getByRole('textbox'), { target: { value: '2.5k' } });
     fireEvent.click(within(container).getByRole('button', { name: 'Apply' }));
 
-    expect(onUpdateComponentValue).toHaveBeenCalledWith('r1', 'resistance', 2500);
+    expect(onUpdateComponentProperty).toHaveBeenCalledWith('r1', 'resistance', 2500);
     expect(onValueApplied).toHaveBeenCalledTimes(1);
   });
 
@@ -115,7 +115,7 @@ describe('PropertyPanel updates and rendering', () => {
         selectedTarget={{ type: 'component_value', componentId: 'c1' }}
         onChangeSelectedTarget={vi.fn()}
         onSolveForTarget={vi.fn()}
-        onUpdateComponentValue={vi.fn()}
+        onUpdateComponentProperty={vi.fn()}
         onValueApplied={vi.fn()}
       />
     );
@@ -124,6 +124,64 @@ describe('PropertyPanel updates and rendering', () => {
 
     expect(within(container).getByText(/incompatible with expected F/i)).toBeTruthy();
     expect(within(container).getByRole('button', { name: 'Apply' }).hasAttribute('disabled')).toBe(true);
+  });
+
+
+
+  it('renders enum property from catalog schema and applies updates', () => {
+    const logicGate: CircuitComponent = {
+      id: 'g1',
+      kind: 'digital',
+      catalogTypeId: 'logic-gate',
+      from: 'n1',
+      to: 'gnd',
+      gateType: 'nand',
+      bridge: {
+        highThreshold: { value: 3, known: true, computed: false, unit: 'V', constraints: { min: 0 } },
+        lowThreshold: { value: 1, known: true, computed: false, unit: 'V' },
+        highLevel: { value: 5, known: true, computed: false, unit: 'V' },
+        lowLevel: { value: 0, known: true, computed: false, unit: 'V' }
+      }
+    };
+
+    const onUpdate = vi.fn();
+    const { container } = render(
+      <PropertyPanel
+        selectedComponent={logicGate}
+        solved={{ values: {}, diagnostics: [] }}
+        selectedTarget={{ type: 'component_value', componentId: 'g1' }}
+        onChangeSelectedTarget={vi.fn()}
+        onSolveForTarget={vi.fn()}
+        onUpdateComponentProperty={onUpdate}
+        onValueApplied={vi.fn()}
+      />
+    );
+
+    const gateTypeSelect = within(container).getByLabelText('Gate type');
+    fireEvent.change(gateTypeSelect, { target: { value: 'xor' } });
+    fireEvent.click(within(container).getAllByRole('button', { name: 'Apply' })[0]);
+
+    expect(onUpdate).toHaveBeenCalledWith('g1', 'gateType', 'xor');
+  });
+
+  it('enforces min and non-zero constraint validation messages', () => {
+    const { container } = render(
+      <PropertyPanel
+        selectedComponent={selectedResistor}
+        solved={{ values: {}, diagnostics: [] }}
+        selectedTarget={{ type: 'component_value', componentId: 'r1' }}
+        onChangeSelectedTarget={vi.fn()}
+        onSolveForTarget={vi.fn()}
+        onUpdateComponentProperty={vi.fn()}
+        onValueApplied={vi.fn()}
+      />
+    );
+
+    fireEvent.change(within(container).getByRole('textbox'), { target: { value: '0' } });
+    expect(within(container).getByText(/Value must be non-zero/i)).toBeTruthy();
+
+    fireEvent.change(within(container).getByRole('textbox'), { target: { value: '0.0001' } });
+    expect(within(container).getByText(/Value must be ≥ 0.001 Ω/i)).toBeTruthy();
   });
 
   it('renders computed values and diagnostics visibility', () => {
@@ -172,7 +230,7 @@ describe('PropertyPanel updates and rendering', () => {
         selectedTarget={{ type: 'component_current', componentId: 'r1' }}
         onChangeSelectedTarget={vi.fn()}
         onSolveForTarget={vi.fn()}
-        onUpdateComponentValue={vi.fn()}
+        onUpdateComponentProperty={vi.fn()}
         onValueApplied={vi.fn()}
         onJumpToEquationRow={onJumpToEquationRow}
       />
