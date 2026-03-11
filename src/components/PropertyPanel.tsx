@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CircuitComponent, SolveCircuitResult, ValueMetadata } from '../engine/model';
+import type { CircuitComponent, SolveCircuitResult, SolveTarget, TargetSolveResult, ValueMetadata } from '../engine/model';
 import { ANIMATION_MS } from '../styles/animations';
 
 const PREFIX_FACTORS = {
@@ -14,7 +14,12 @@ type Prefix = keyof typeof PREFIX_FACTORS;
 
 type PropertyPanelProps = {
   selectedComponent?: CircuitComponent;
+  selectedNodeId?: string;
   solved: SolveCircuitResult;
+  targetResult?: TargetSolveResult;
+  selectedTarget: SolveTarget;
+  onChangeSelectedTarget: (target: SolveTarget) => void;
+  onSolveForTarget: () => void;
   onUpdateComponentValue: (componentId: string, valueKey: 'resistance' | 'capacitance' | 'inductance' | 'voltage' | 'current', value: number) => void;
   onValueApplied: () => void;
 };
@@ -44,11 +49,13 @@ const getEditableField = (
   }
 };
 
-export const PropertyPanel = ({ selectedComponent, solved, onUpdateComponentValue, onValueApplied }: PropertyPanelProps) => {
+export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, onUpdateComponentValue, onValueApplied }: PropertyPanelProps) => {
   const editableField = getEditableField(selectedComponent);
   const [displayValue, setDisplayValue] = useState<string>('');
   const [prefix, setPrefix] = useState<Prefix>('');
   const [isValueUpdated, setIsValueUpdated] = useState(false);
+
+  const targetDiagnostic = useMemo(() => solved.diagnostics.find((diagnostic) => diagnostic.code.startsWith('target_')), [solved.diagnostics]);
 
   const computedValues = useMemo(() => {
     if (!selectedComponent) {
@@ -142,6 +149,34 @@ export const PropertyPanel = ({ selectedComponent, solved, onUpdateComponentValu
             {validationMessage && <p className="validation-error">{validationMessage}</p>}
           </>
         )}
+      </div>
+
+      <div className="computed-block">
+        <h3>Target solve</h3>
+        <label>
+          Solve target
+          <select
+            value={selectedTarget.type}
+            onChange={(event) => {
+              const nextType = event.target.value as SolveTarget['type'];
+              if (nextType === 'node_voltage') {
+                onChangeSelectedTarget({ type: nextType, nodeId: selectedNodeId ?? selectedComponent?.from ?? 'gnd' });
+              } else {
+                onChangeSelectedTarget({ type: nextType, componentId: selectedComponent?.id ?? '' });
+              }
+            }}
+          >
+            <option value="node_voltage">Node voltage</option>
+            <option value="component_current">Component current</option>
+            <option value="component_value">Component value</option>
+          </select>
+        </label>
+        <button type="button" onClick={onSolveForTarget}>
+          Solve for X
+        </button>
+        {targetResult && <p className="readonly">{targetResult.key}: {formatValue(targetResult.value)} {targetResult.unit} ({targetResult.unique ? 'unique' : 'non-unique'})</p>}
+        {targetResult && <p className="readonly">Dependencies: {targetResult.dependencies.join(', ') || 'none'}</p>}
+        {targetDiagnostic && <p className={`diag-${targetDiagnostic.severity}`}>[{targetDiagnostic.code}] {targetDiagnostic.message}</p>}
       </div>
 
       <div className={`computed-block ${isValueUpdated ? 'value-updated' : ''}`}>

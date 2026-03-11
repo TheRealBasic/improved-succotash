@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { solveCircuit } from '../solver';
+import { solveCircuit, solveCircuitForTarget } from '../solver';
 import { simulateStep } from '../simulation';
 import type { CircuitState } from '../model';
 
@@ -151,5 +151,56 @@ describe('simulation helpers', () => {
 
     expect(step.current).toBeCloseTo(0.005, 9);
     expect(step.time).toBe(0.001);
+  });
+});
+
+
+describe('solveCircuit target solving', () => {
+  it('returns target value, dependencies and uniqueness for a solvable target', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'vs',
+          kind: 'voltageSource',
+          from: 'n1',
+          to: 'gnd',
+          voltage: { value: 10, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'r1',
+          kind: 'resistor',
+          from: 'n1',
+          to: 'gnd',
+          resistance: { value: 5, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
+        }
+      ]
+    };
+
+    const result = solveCircuitForTarget(circuit, { type: 'component_current', componentId: 'r1' });
+
+    expect(result.target?.value).toBeCloseTo(2, 6);
+    expect(result.target?.unique).toBe(true);
+    expect(result.target?.dependencies).toContain('component:r1');
+  });
+
+  it('emits focused non-unique target diagnostic for underdetermined solve', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'c1',
+          kind: 'capacitor',
+          from: 'n1',
+          to: 'gnd',
+          capacitance: { value: 2e-6, known: true, computed: false, unit: 'F' }
+        }
+      ]
+    };
+
+    const result = solveCircuitForTarget(circuit, { type: 'node_voltage', nodeId: 'n1' });
+
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'target_non_unique')).toBe(true);
+    expect(result.target?.unique).toBe(false);
   });
 });
