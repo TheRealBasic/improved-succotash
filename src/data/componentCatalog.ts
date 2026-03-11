@@ -187,6 +187,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic two-terminal resistor symbol.',
     tags: ['symbol', 'ohmic', 'generic'],
     pinCount: 2,
+    editablePropertySchema: {
+      resistance: { type: 'number', label: 'Resistance', unit: 'Ω', min: 0.001 }
+    },
+    solverBehavior: { model: 'resistor', propertyMap: { resistance: 'resistance' } },
     defaultProps: { resistanceOhms: 1000 },
     sidebar: { category: 'passive', subcategory: 'generic' }
   },
@@ -199,6 +203,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic capacitor symbol for charge storage.',
     tags: ['symbol', 'energy-storage', 'generic'],
     pinCount: 2,
+    editablePropertySchema: {
+      capacitance: { type: 'number', label: 'Capacitance', unit: 'F', min: 0 }
+    },
+    solverBehavior: { model: 'capacitor', propertyMap: { capacitance: 'capacitance' } },
     defaultProps: { capacitanceFarads: 0.000001 },
     sidebar: { category: 'passive', subcategory: 'generic' }
   },
@@ -211,6 +219,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic inductor symbol for magnetic energy storage.',
     tags: ['symbol', 'magnetic', 'generic'],
     pinCount: 2,
+    editablePropertySchema: {
+      inductance: { type: 'number', label: 'Inductance', unit: 'H', min: 0 }
+    },
+    solverBehavior: { model: 'inductor', propertyMap: { inductance: 'inductance' } },
     defaultProps: { inductanceHenries: 0.001 },
     sidebar: { category: 'passive', subcategory: 'generic' }
   },
@@ -223,6 +235,12 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Ideal two-terminal voltage source.',
     tags: ['source', 'dc', 'generic'],
     pinCount: 2,
+    editablePropertySchema: {
+      voltage: { type: 'number', label: 'Voltage', unit: 'V' },
+      internalResistance: { type: 'number', label: 'Internal resistance', unit: 'Ω', min: 0 },
+      rippleAmplitude: { type: 'number', label: 'Ripple amplitude', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'voltage-source', propertyMap: { voltage: 'voltage', internalResistance: 'nonIdeal.internalResistance', rippleAmplitude: 'nonIdeal.rippleAmplitude' } },
     defaultProps: { voltageVolts: 5 },
     sidebar: { category: 'sources', subcategory: 'dc' }
   },
@@ -235,6 +253,12 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Ideal two-terminal current source.',
     tags: ['source', 'bias', 'generic'],
     pinCount: 2,
+    editablePropertySchema: {
+      current: { type: 'number', label: 'Current', unit: 'A' },
+      internalResistance: { type: 'number', label: 'Internal resistance', unit: 'Ω', min: 0 },
+      rippleAmplitude: { type: 'number', label: 'Ripple amplitude', unit: 'A', min: 0 }
+    },
+    solverBehavior: { model: 'current-source', propertyMap: { current: 'current', internalResistance: 'nonIdeal.internalResistance', rippleAmplitude: 'nonIdeal.rippleAmplitude' } },
     defaultProps: { currentAmps: 0.001 },
     sidebar: { category: 'sources', subcategory: 'dc' }
   },
@@ -247,6 +271,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic diode symbol with standard silicon defaults.',
     tags: ['pn-junction', 'generic', 'rectifier'],
     pinCount: 2,
+    editablePropertySchema: {
+      forwardDrop: { type: 'number', label: 'Forward drop', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'diode', propertyMap: { forwardDrop: 'forwardDrop' } },
     defaultProps: { forwardDropVolts: 0.7 },
     sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
   },
@@ -259,6 +287,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic NPN bipolar junction transistor symbol.',
     tags: ['transistor', 'generic', 'bipolar'],
     pinCount: 3,
+    editablePropertySchema: {
+      beta: { type: 'number', label: 'Beta', min: 0 }
+    },
+    solverBehavior: { model: 'bjt', propertyMap: { beta: 'beta' } },
     defaultProps: { beta: 100 },
     sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
@@ -271,6 +303,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic enhancement-mode MOSFET symbol.',
     tags: ['transistor', 'generic', 'switch'],
     pinCount: 3,
+    editablePropertySchema: {
+      thresholdVoltage: { type: 'number', label: 'Threshold voltage', unit: 'V' }
+    },
+    solverBehavior: { model: 'mosfet', propertyMap: { thresholdVoltage: 'thresholdVoltage' } },
     defaultProps: { thresholdVoltageVolts: 2.5 },
     sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
@@ -283,6 +319,10 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic operational amplifier macro model.',
     tags: ['ic', 'analog', 'generic'],
     pinCount: 5,
+    editablePropertySchema: {
+      gain: { type: 'number', label: 'Open-loop gain', min: 1 }
+    },
+    solverBehavior: { model: 'op-amp', propertyMap: { gain: 'gain' } },
     defaultProps: { openLoopGain: 100000 },
     sidebar: { category: 'ics', subcategory: 'op-amps' }
   },
@@ -295,6 +335,11 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic digital logic gate.',
     tags: ['ic', 'digital', 'generic'],
     pinCount: 3,
+    editablePropertySchema: {
+      gateType: { type: 'enum', label: 'Gate type', options: ['and', 'or', 'not', 'nand', 'nor', 'xor'] },
+      highThreshold: { type: 'number', label: 'Logic high threshold', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'logic-gate', propertyMap: { gateType: 'gateType', highThreshold: 'bridge.highThreshold' } },
     defaultProps: { family: 'CMOS', gateType: 'nand' },
     sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
   },
