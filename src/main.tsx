@@ -18,6 +18,7 @@ import {
   unlockSfx
 } from './audio/sfx';
 import { cloneCircuit, circuitPresets, type EditorCircuit } from './data/presets';
+import { decodeCircuitShare, deserializeCircuit, encodeCircuitShare, normalizeCircuit, serializeCircuit } from './data/circuitPersistence';
 import type { CircuitComponent, ComponentCatalogTypeId, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
 import { runAnalysis, simulateStep } from './engine/simulation';
 import { solveCircuitForTarget, solveCircuitValues } from './engine/solver';
@@ -62,15 +63,6 @@ const componentFactory = (catalogTypeId: ComponentCatalogTypeId, id: string, fro
   }
 };
 
-const encodeCircuit = (circuit: EditorCircuit): string => window.btoa(unescape(encodeURIComponent(JSON.stringify(circuit))));
-const decodeCircuit = (encoded: string): EditorCircuit => normalizeCircuit(JSON.parse(decodeURIComponent(escape(window.atob(encoded)))) as EditorCircuit);
-
-
-const normalizeCircuit = (circuit: EditorCircuit): EditorCircuit => ({
-  ...circuit,
-  subcircuits: circuit.subcircuits ?? []
-});
-
 const getInitialCircuit = (): EditorCircuit => {
   if (typeof window === 'undefined') {
     return cloneCircuit(circuitPresets.starter);
@@ -79,7 +71,7 @@ const getInitialCircuit = (): EditorCircuit => {
   const shared = new URLSearchParams(window.location.search).get('c');
   if (shared) {
     try {
-      return decodeCircuit(shared);
+      return decodeCircuitShare(shared);
     } catch {
       return cloneCircuit(circuitPresets.starter);
     }
@@ -88,7 +80,7 @@ const getInitialCircuit = (): EditorCircuit => {
   const local = window.localStorage.getItem(STORAGE_KEY);
   if (local) {
     try {
-      return normalizeCircuit(JSON.parse(local) as EditorCircuit);
+      return deserializeCircuit(local);
     } catch {
       return cloneCircuit(circuitPresets.starter);
     }
@@ -191,7 +183,7 @@ const App = () => {
       }
     }, 140);
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(circuit));
+    window.localStorage.setItem(STORAGE_KEY, serializeCircuit(circuit));
 
     return () => window.clearTimeout(timer);
   }, [circuit]);
@@ -602,7 +594,7 @@ const App = () => {
   };
 
   const shareCircuit = async () => {
-    const encoded = encodeCircuit(circuit);
+    const encoded = encodeCircuitShare(circuit);
     const url = `${window.location.origin}${window.location.pathname}?c=${encoded}`;
     await navigator.clipboard.writeText(url);
     playSfx('connect');
@@ -614,7 +606,7 @@ const App = () => {
       return;
     }
     try {
-      const parsed = normalizeCircuit(JSON.parse(raw) as EditorCircuit);
+      const parsed = deserializeCircuit(raw);
       setCircuit(parsed);
       playSfx('place');
     } catch {
@@ -678,7 +670,7 @@ const App = () => {
           <button type="button" onClick={redo} disabled={!future.length}>
             Redo
           </button>
-          <button type="button" onClick={() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(circuit))}>
+          <button type="button" onClick={() => window.localStorage.setItem(STORAGE_KEY, serializeCircuit(circuit))}>
             Save
           </button>
           <button type="button" onClick={() => setCircuit(normalizeCircuit(getInitialCircuit()))}>
@@ -705,7 +697,7 @@ const App = () => {
             </select>
           </label>
           <button type="button" onClick={shareCircuit}>Copy Link</button>
-          <button type="button" onClick={() => window.navigator.clipboard.writeText(JSON.stringify(circuit, null, 2))}>Export</button>
+          <button type="button" onClick={() => window.navigator.clipboard.writeText(serializeCircuit(circuit))}>Export</button>
           <button type="button" onClick={importCircuit}>Import</button>
           <button type="button" onClick={duplicateSelected} title={`Shortcut: ${shortcutLabel('duplicate')}`}>
             Duplicate
