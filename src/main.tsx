@@ -22,6 +22,7 @@ import { decodeCircuitShare, deserializeCircuit, encodeCircuitShare, normalizeCi
 import type { CircuitComponent, ComponentCatalogTypeId, SolveCircuitResult, SolveTarget, SubcircuitDefinition, TargetSolveResult, Unit, ValueMetadata } from './engine/model';
 import { runAnalysis, simulateStep } from './engine/simulation';
 import { solveCircuitForTarget, solveCircuitValues } from './engine/solver';
+import { trackComponentPlaced, trackComponentPropertyEdited, trackSolverDiagnostics } from './telemetry';
 import './styles/theme.css';
 import './styles/animations.css';
 
@@ -171,6 +172,7 @@ const App = () => {
       }).result;
 
       setSolved(analysisResult);
+      trackSolverDiagnostics({ diagnostics: analysisResult.diagnostics, analysisMode: mode });
 
       const hasErrors = analysisResult.diagnostics.some((diagnostic) => diagnostic.severity === 'error');
       const hasWarnings = analysisResult.diagnostics.some((diagnostic) => diagnostic.severity === 'warning');
@@ -186,7 +188,7 @@ const App = () => {
     window.localStorage.setItem(STORAGE_KEY, serializeCircuit(circuit));
 
     return () => window.clearTimeout(timer);
-  }, [circuit]);
+  }, [circuit, mode]);
 
 
   useEffect(() => {
@@ -309,8 +311,9 @@ const App = () => {
   };
 
   const addComponentAt = (catalogTypeId: ComponentCatalogTypeId, x: number, y: number) => {
+    const baseId = `${catalogTypeId}-${Date.now()}`;
+
     applyCircuitUpdate((current) => {
-      const baseId = `${catalogTypeId}-${Date.now()}`;
       const fromNodeId = `${baseId}-from`;
       const toNodeId = `${baseId}-to`;
       return {
@@ -323,6 +326,7 @@ const App = () => {
         components: [...current.components, componentFactory(catalogTypeId, baseId, fromNodeId, toNodeId)]
       };
     }, `Place ${catalogTypeId}`);
+    trackComponentPlaced({ componentId: baseId, componentType: catalogTypeId, analysisMode: mode });
     playSfx('place');
   };
 
@@ -529,6 +533,28 @@ const App = () => {
     valueKey: string,
     value: number | string | boolean
   ) => {
+    const component = circuit.components.find((item) => item.id === componentId);
+    if (component) {
+      const isEditableNumeric = [
+        'resistance',
+        'capacitance',
+        'inductance',
+        'voltage',
+        'current',
+        'internalResistance',
+        'rippleAmplitude',
+        'forwardDrop',
+        'beta',
+        'thresholdVoltage',
+        'gain',
+        'highThreshold'
+      ].includes(valueKey) && typeof value === 'number';
+      const isEditableGateType = valueKey === 'gateType' && component.catalogTypeId === 'logic-gate' && typeof value === 'string';
+      if (isEditableNumeric || isEditableGateType) {
+        trackComponentPropertyEdited({ componentId, propertyKey: valueKey, analysisMode: mode });
+      }
+    }
+
     applyCircuitUpdate((current) => ({
       ...current,
       components: current.components.map((component) => {
@@ -629,6 +655,7 @@ const App = () => {
 
     setSolved(result);
     setTargetResult(result.target);
+    trackSolverDiagnostics({ diagnostics: result.diagnostics, analysisMode: mode });
   };
 
 
