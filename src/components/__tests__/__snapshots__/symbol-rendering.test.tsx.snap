@@ -7,6 +7,36 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "expectedPinCounts": [
       2,
     ],
+    "id": "capacitor-ceramic",
+    "kind": "capacitor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "capacitor-electrolytic",
+    "kind": "capacitor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "capacitor-film",
+    "kind": "capacitor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
     "id": "capacitor",
     "kind": "capacitor",
     "pinCount": 2,
@@ -33,6 +63,116 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "rendererId": "line-only",
   },
   {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "coupled-inductor",
+    "kind": "inductor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "ferrite-bead",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "thermistor-ntc",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "potentiometer-trimpot",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "thermistor-ptc",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "trimmer-resistor",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "varistor-mov",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "ac-voltage-source",
+    "kind": "ac-voltage-source",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "battery-cell",
+    "kind": "battery-cell",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "battery-pack",
+    "kind": "battery-pack",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "battery-coin-cell",
+    "kind": "battery-coin-cell",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
     "category": "sources",
     "expectedPinCounts": [
       2,
@@ -49,6 +189,26 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     ],
     "id": "voltage-source",
     "kind": "voltage-source",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "pulse-voltage-source",
+    "kind": "pulse-voltage-source",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "reference-source",
+    "kind": "reference-source",
     "pinCount": 2,
     "rendererId": "line-only",
   },
@@ -115,6 +275,56 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "kind": "op-amp",
     "pinCount": 8,
     "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "power",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "charge-pump",
+    "kind": "charge-pump",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "power",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "boost-regulator",
+    "kind": "boost-regulator",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "power",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "buck-regulator",
+    "kind": "buck-regulator",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "power",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "current-regulator",
+    "kind": "current-regulator",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "power",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "ldo-regulator",
+    "kind": "ldo-regulator",
+    "pinCount": 2,
+    "rendererId": "line-only",
   },
   {
     "category": "specialty",

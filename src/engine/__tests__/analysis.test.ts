@@ -48,6 +48,38 @@ describe('runAnalysis AC mode', () => {
     expect(high).toBeLessThan(0.05);
     expect(high).toBeLessThan(low);
   });
+
+  it('emits support-tier diagnostics for partial and visual-only components by mode', () => {
+    const supportTierCircuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'ac1',
+          kind: 'source2p',
+          catalogTypeId: 'ac-voltage-source',
+          from: 'n1',
+          to: 'gnd',
+          voltage: { value: 1, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'cp1',
+          kind: 'source2p',
+          catalogTypeId: 'charge-pump',
+          from: 'n1',
+          to: 'gnd',
+          voltage: { value: 5, known: true, computed: false, unit: 'V' }
+        }
+      ]
+    };
+
+    const dcResult = runAnalysis(supportTierCircuit);
+    const acResult = runAnalysis(supportTierCircuit, { mode: 'ac', options: { startHz: 100, stopHz: 1000, points: 2 } });
+
+    expect(dcResult.diagnostics.some((d) => d.code === 'unsupported_analysis_mode' && d.componentId === 'ac1')).toBe(true);
+    expect(dcResult.diagnostics.some((d) => d.code === 'unsupported_analysis_mode' && d.componentId === 'cp1')).toBe(true);
+    expect(acResult.diagnostics.some((d) => d.code === 'unsupported_analysis_mode' && d.componentId === 'cp1')).toBe(true);
+  });
+
 });
 
 describe('runAnalysis transient mode', () => {
@@ -84,7 +116,7 @@ describe('analysis capability gating', () => {
       options: { startHz: 10, stopHz: 1000, points: 3 }
     });
 
-    expect(result.diagnostics.filter((diagnostic) => diagnostic.code === 'unsupported_component_behavior')).toHaveLength(0);
+    expect(result.diagnostics.filter((diagnostic) => diagnostic.code === 'unsupported_analysis_mode')).toHaveLength(0);
   });
 
   it('returns actionable diagnostics for partially supported AC/transient circuits', () => {
@@ -114,12 +146,12 @@ describe('analysis capability gating', () => {
 
     expect(acResult.sweep).toHaveLength(3);
     expect(transientResult.waveform.length).toBeGreaterThan(0);
-    expect(acResult.diagnostics.some((d) => d.code === 'unsupported_component_behavior' && d.componentId === 'g1')).toBe(true);
-    expect(transientResult.diagnostics.some((d) => d.code === 'unsupported_component_behavior' && d.componentId === 'g1')).toBe(true);
+    expect(acResult.diagnostics.some((d) => d.code === 'unsupported_analysis_mode' && d.componentId === 'g1')).toBe(true);
+    expect(transientResult.diagnostics.some((d) => d.code === 'unsupported_analysis_mode' && d.componentId === 'g1')).toBe(true);
     expect(acResult.diagnostics[0]?.message).toMatch(/replace it with an AC-supported equivalent model/i);
   });
 
-  it('reports unsupported_component_behavior when analysis has only unsupported behavior families', () => {
+  it('reports unsupported_analysis_mode when analysis has only unsupported behavior families', () => {
     const unsupportedCircuit: CircuitState = {
       nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
       components: [
@@ -142,7 +174,7 @@ describe('analysis capability gating', () => {
 
     const acResult = runAnalysis(unsupportedCircuit, { mode: 'ac', options: { startHz: 1, stopHz: 10, points: 2 } });
 
-    expect(acResult.diagnostics.some((d) => d.code === 'unsupported_component_behavior')).toBe(true);
+    expect(acResult.diagnostics.some((d) => d.code === 'unsupported_analysis_mode')).toBe(true);
     expect(acResult.sweep).toHaveLength(2);
   });
 });

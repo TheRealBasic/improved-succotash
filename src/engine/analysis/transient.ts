@@ -59,12 +59,13 @@ const solveLinearSystem = (A: number[][], b: number[]): number[] => {
 };
 
 const sourceVoltageAt = (component: CircuitComponent, time: number, sourceSteps?: TransientAnalysisOptions['sourceSteps']): number => {
-  if (component.catalogTypeId !== 'voltage-source') {
+  if (!['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump'].includes(component.catalogTypeId)) {
     return 0;
   }
   const step = sourceSteps?.[component.id];
   if (!step) {
-    return component.voltage.value ?? 0;
+    if (!('voltage' in component)) return 0;
+  return component.voltage.value ?? 0;
   }
   return time < step.at ? step.before : step.after;
 };
@@ -75,7 +76,7 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
 
   const nodeIds = supportedCircuit.nodes.filter((node) => !node.reference).map((node) => node.id);
   const nodeMap = new Map(nodeIds.map((id, idx) => [id, idx]));
-  const voltageSources = supportedCircuit.components.filter((component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire');
+  const voltageSources = supportedCircuit.components.filter((component) => ['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump','wire'].includes(component.catalogTypeId));
   const size = nodeIds.length + voltageSources.length;
 
   const capacitorState = new Map<string, number>();
@@ -118,7 +119,7 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
     for (const component of supportedCircuit.components) {
       if (component.catalogTypeId === 'resistor' && component.resistance.value) {
         stampConductance(component.from, component.to, 1 / component.resistance.value);
-      } else if (component.catalogTypeId === 'current-source') {
+      } else if (component.catalogTypeId === 'current-source' || component.catalogTypeId === 'current-regulator') {
         stampCurrent(component.from, component.to, (component.current.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0));
       } else if (component.catalogTypeId === 'capacitor') {
         const C = component.capacitance.value ?? 0;

@@ -322,7 +322,7 @@ describe('monte carlo capability gating', () => {
     const result = solveCircuit(circuit, { monteCarlo: { runs: 5, seed: 7 } });
 
     expect(result.monteCarlo?.runs).toBe(5);
-    expect(result.diagnostics.filter((d) => d.code === 'unsupported_component_behavior')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.code === 'unsupported_analysis_mode')).toHaveLength(0);
   });
 
   it('emits unsupported behavior diagnostics but still solves supported subset in Monte Carlo', () => {
@@ -357,7 +357,7 @@ describe('monte carlo capability gating', () => {
     const result = solveCircuit(circuit, { monteCarlo: { runs: 4, seed: 3 } });
 
     expect(result.values['node:n1:voltage']?.value).toBeCloseTo(5, 6);
-    expect(result.diagnostics.some((d) => d.code === 'unsupported_component_behavior' && d.componentId === 'g1')).toBe(true);
+    expect(result.diagnostics.some((d) => d.code === 'unsupported_analysis_mode' && d.componentId === 'g1')).toBe(true);
     expect(result.diagnostics.some((d) => /exclude this component from monte carlo/i.test(d.message))).toBe(true);
   });
 });

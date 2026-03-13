@@ -59,6 +59,10 @@ const diagnosticGuidanceByCode: Partial<Record<SolverDiagnostic['code'], Diagnos
   overdetermined: {
     why: 'The equation set includes contradictory constraints, so no solution satisfies all of them.',
     suggestedFix: 'Remove or correct conflicting constraints such as incompatible source settings.'
+  },
+  unsupported_analysis_mode: {
+    why: 'The selected analysis mode does not support the behavior model of one or more placed components.',
+    suggestedFix: 'Switch to a supported analysis mode or replace unsupported parts with supported equivalents.'
   }
 };
 
@@ -71,12 +75,38 @@ const componentUnits: Partial<Record<CircuitComponent['catalogTypeId'], Unit>> =
   inductor: 'H',
   'voltage-source': 'V',
   'current-source': 'A',
+  'ac-voltage-source': 'V',
+  'pulse-voltage-source': 'V',
+  'reference-source': 'V',
+  'battery-cell': 'V',
+  'battery-pack': 'V',
+  'battery-coin-cell': 'V',
+  'ldo-regulator': 'V',
+  'buck-regulator': 'V',
+  'boost-regulator': 'V',
+  'charge-pump': 'V',
+  'current-regulator': 'A',
   diode: 'V',
   bjt: 'A',
   mosfet: 'V',
   'op-amp': 'V',
   'logic-gate': 'V'
 };
+
+const isVoltageLikeSource = (catalogTypeId: CircuitComponent['catalogTypeId']): boolean =>
+  [
+    'voltage-source',
+    'ac-voltage-source',
+    'pulse-voltage-source',
+    'reference-source',
+    'battery-cell',
+    'battery-pack',
+    'battery-coin-cell',
+    'ldo-regulator',
+    'buck-regulator',
+    'boost-regulator',
+    'charge-pump'
+  ].includes(catalogTypeId);
 
 const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata | undefined => {
   switch (component.catalogTypeId) {
@@ -87,8 +117,19 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
     case 'inductor':
       return component.inductance;
     case 'voltage-source':
+    case 'ac-voltage-source':
+    case 'pulse-voltage-source':
+    case 'reference-source':
+    case 'battery-cell':
+    case 'battery-pack':
+    case 'battery-coin-cell':
+    case 'ldo-regulator':
+    case 'buck-regulator':
+    case 'boost-regulator':
+    case 'charge-pump':
       return component.voltage;
     case 'current-source':
+    case 'current-regulator':
       return component.current;
     case 'diode':
       return component.forwardDrop;
@@ -281,7 +322,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
     .filter((id) => !knownNodeVoltages.has(id) && !referenceNodeIds.has(id));
 
   const voltageConstraintComponents = circuit.components.filter(
-    (component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor'
+    (component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'ac-voltage-source' || component.catalogTypeId === 'pulse-voltage-source' || component.catalogTypeId === 'reference-source' || component.catalogTypeId === 'battery-cell' || component.catalogTypeId === 'battery-pack' || component.catalogTypeId === 'battery-coin-cell' || component.catalogTypeId === 'ldo-regulator' || component.catalogTypeId === 'buck-regulator' || component.catalogTypeId === 'boost-regulator' || component.catalogTypeId === 'charge-pump' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor'
   );
 
   const sourceCurrentVarIds = voltageConstraintComponents.map((component) => component.id);
@@ -428,7 +469,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
         if (component.to === nodeId) {
           rhs += outV;
         }
-      } else if (component.catalogTypeId === 'current-source') {
+      } else if (component.catalogTypeId === 'current-source' || component.catalogTypeId === 'current-regulator') {
         const baseCurrent = component.current.value ?? 0;
         const ripple = component.nonIdeal?.rippleAmplitude?.value ?? 0;
         const current = baseCurrent + ripple;
@@ -440,8 +481,8 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           rhs += current;
           rowConstants.push({ componentId: component.id, value: current, description: `${component.id} source current entering ${nodeId}` });
         }
-      } else if (component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor') {
-        if (component.catalogTypeId === 'voltage-source' && (component.nonIdeal?.internalResistance?.value ?? 0) > 0) {
+      } else if (component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'ac-voltage-source' || component.catalogTypeId === 'pulse-voltage-source' || component.catalogTypeId === 'reference-source' || component.catalogTypeId === 'battery-cell' || component.catalogTypeId === 'battery-pack' || component.catalogTypeId === 'battery-coin-cell' || component.catalogTypeId === 'ldo-regulator' || component.catalogTypeId === 'buck-regulator' || component.catalogTypeId === 'boost-regulator' || component.catalogTypeId === 'charge-pump' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor') {
+        if ((component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'reference-source' || component.catalogTypeId === 'battery-cell' || component.catalogTypeId === 'battery-pack' || component.catalogTypeId === 'battery-coin-cell' || component.catalogTypeId === 'ldo-regulator' || component.catalogTypeId === 'buck-regulator' || component.catalogTypeId === 'boost-regulator' || component.catalogTypeId === 'ac-voltage-source' || component.catalogTypeId === 'pulse-voltage-source' || component.catalogTypeId === 'charge-pump') && (component.nonIdeal?.internalResistance?.value ?? 0) > 0) {
           const r = component.nonIdeal?.internalResistance?.value ?? 0;
           const g = 1 / r;
           const isFrom = component.from === nodeId;
@@ -489,7 +530,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
 
   for (const component of voltageConstraintComponents) {
     const row = new Array<number>(unknownCount).fill(0);
-    const sourceVoltage = component.catalogTypeId === 'voltage-source' ? (component.voltage.value ?? 0) : 0;
+    const sourceVoltage = isVoltageLikeSource(component.catalogTypeId) && 'voltage' in component ? (component.voltage.value ?? 0) : 0;
     const rowTerms: EquationTraceTerm[] = [];
     const rowConstants: EquationTraceConstant[] = [];
 
@@ -760,7 +801,7 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       );
     }
 
-    if (component.catalogTypeId === 'voltage-source') {
+    if (component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'ac-voltage-source' || component.catalogTypeId === 'pulse-voltage-source' || component.catalogTypeId === 'reference-source' || component.catalogTypeId === 'battery-cell' || component.catalogTypeId === 'battery-pack' || component.catalogTypeId === 'battery-coin-cell' || component.catalogTypeId === 'ldo-regulator' || component.catalogTypeId === 'buck-regulator' || component.catalogTypeId === 'boost-regulator' || component.catalogTypeId === 'charge-pump') {
       values[`component:${component.id}:voltage`] = toSolvedValue(
         `component:${component.id}:voltage`,
         'V',
