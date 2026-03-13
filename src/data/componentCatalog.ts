@@ -219,6 +219,31 @@ const sharedSwitchPropertyMap = {
   hysteresis: 'hysteresis'
 };
 
+const diodePropertySchema: Record<string, ComponentEditableProperty> = {
+  forwardDrop: { type: 'number', label: 'Forward drop', unit: 'V', min: 0 },
+  reverseRecoveryNs: { type: 'number', label: 'Reverse recovery', unit: 'ns', min: 0 },
+  junctionCapacitancePf: { type: 'number', label: 'Junction capacitance', unit: 'pF', min: 0 }
+};
+
+const bjtPropertySchema: Record<string, ComponentEditableProperty> = {
+  beta: { type: 'number', label: 'DC gain (β)', min: 1 },
+  vbeOn: { type: 'number', label: 'VBE(on)', unit: 'V', min: 0 },
+  collectorCurrentMaxA: { type: 'number', label: 'Collector current max', unit: 'A', min: 0 },
+  inputCapacitancePf: { type: 'number', label: 'Input capacitance', unit: 'pF', min: 0 },
+  outputCapacitancePf: { type: 'number', label: 'Output capacitance', unit: 'pF', min: 0 }
+};
+
+const mosfetPropertySchema: Record<string, ComponentEditableProperty> = {
+  thresholdVoltage: { type: 'number', label: 'Threshold voltage', unit: 'V' },
+  onResistance: { type: 'number', label: 'On-state resistance', unit: 'Ω', min: 0 },
+  offLeakageCurrent: { type: 'number', label: 'Off leakage', unit: 'A', min: 0 },
+  hysteresis: { type: 'number', label: 'Hysteresis', unit: 'V', min: 0 },
+  gateChargeNc: { type: 'number', label: 'Gate charge', unit: 'nC', min: 0 },
+  inputCapacitancePf: { type: 'number', label: 'Input capacitance', unit: 'pF', min: 0 },
+  outputCapacitancePf: { type: 'number', label: 'Output capacitance', unit: 'pF', min: 0 },
+  reverseTransferCapacitancePf: { type: 'number', label: 'Reverse transfer capacitance', unit: 'pF', min: 0 }
+};
+
 const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   {
     id: 'resistor',
@@ -914,65 +939,230 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   },
   {
     id: 'diode',
-    displayName: 'Diode',
+    displayName: 'Diode (Rectifier)',
     kind: 'diode',
     category: 'semiconductors',
     subcategory: 'rectifier',
-    description: 'Generic diode symbol with standard silicon defaults.',
-    tags: ['pn-junction', 'generic', 'rectifier'],
+    description: 'Generic PN rectifier diode with silicon switching defaults.',
+    tags: ['pn-junction', 'rectifier', 'diode', 'silicon'],
     pinCount: 2,
-    editablePropertySchema: {
-      forwardDrop: { type: 'number', label: 'Forward drop', unit: 'V', min: 0 }
-    },
+    editablePropertySchema: diodePropertySchema,
     solverBehavior: { model: 'diode', propertyMap: { forwardDrop: 'forwardDrop' } },
-    defaultProps: { forwardDropVolts: 0.7 },
+    support: { level: 'partial', notes: 'DC forward-drop model only; reverse recovery/capacitance are informational and not used in AC or transient analyses.' },
+    defaultProps: { forwardDropVolts: 0.7, reverseRecoveryNs: 35, junctionCapacitancePf: 12 },
     metadata: {
-      aliases: ['Rectifier'],
+      aliases: ['Rectifier', 'Silicon diode'],
       shortcut: { key: 'O' }
     },
     sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
   },
   {
+    id: 'diode-schottky',
+    displayName: 'Diode (Schottky)',
+    kind: 'diode',
+    category: 'semiconductors',
+    subcategory: 'rectifier',
+    description: 'Low-forward-drop Schottky diode variant for high-speed rectification.',
+    tags: ['schottky', 'diode', 'rectifier', 'low-vf', 'new'],
+    pinCount: 2,
+    editablePropertySchema: diodePropertySchema,
+    solverBehavior: { model: 'diode', propertyMap: { forwardDrop: 'forwardDrop' } },
+    support: { level: 'partial', notes: 'DC forward-drop model only; leakage and dynamic behavior are approximated.' },
+    defaultProps: { forwardDropVolts: 0.32, reverseRecoveryNs: 8, junctionCapacitancePf: 90 },
+    metadata: { aliases: ['Schottky', 'Schottky diode'] },
+    sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
+  },
+  {
+    id: 'diode-zener',
+    displayName: 'Diode (Zener)',
+    kind: 'diode',
+    category: 'semiconductors',
+    subcategory: 'rectifier',
+    description: 'Zener diode intended for reference and clamp applications.',
+    tags: ['zener', 'diode', 'reference', 'clamp', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      ...diodePropertySchema,
+      zenerVoltage: { type: 'number', label: 'Zener voltage', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'diode-zener', propertyMap: { forwardDrop: 'forwardDrop', zenerVoltage: 'zenerVoltage' } },
+    support: { level: 'visual-only', notes: 'Zener breakdown is not modeled by the solver yet; use as semantic schematic annotation only.' },
+    defaultProps: { forwardDropVolts: 0.75, zenerVoltage: 5.1, reverseRecoveryNs: 120, junctionCapacitancePf: 70 },
+    metadata: { aliases: ['Zener', 'Reference diode'] },
+    sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
+  },
+  {
+    id: 'diode-tvs',
+    displayName: 'Diode (TVS)',
+    kind: 'diode',
+    category: 'semiconductors',
+    subcategory: 'rectifier',
+    description: 'Transient-voltage suppressor diode for surge protection paths.',
+    tags: ['tvs', 'diode', 'surge', 'protection', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      ...diodePropertySchema,
+      standoffVoltage: { type: 'number', label: 'Standoff voltage', unit: 'V', min: 0 },
+      clampingVoltage: { type: 'number', label: 'Clamping voltage', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'diode-tvs', propertyMap: { forwardDrop: 'forwardDrop', standoffVoltage: 'standoffVoltage', clampingVoltage: 'clampingVoltage' } },
+    support: { level: 'visual-only', notes: 'Pulse clamping is unavailable in DC/AC/transient analyses in the current solver.' },
+    defaultProps: { forwardDropVolts: 0.85, standoffVoltage: 12, clampingVoltage: 19.9, reverseRecoveryNs: 1, junctionCapacitancePf: 450 },
+    metadata: { aliases: ['TVS', 'Transient suppressor'] },
+    sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
+  },
+  {
+    id: 'diode-led',
+    displayName: 'Diode (LED)',
+    kind: 'diode',
+    category: 'semiconductors',
+    subcategory: 'rectifier',
+    description: 'Light-emitting diode family with color-typical forward voltage.',
+    tags: ['led', 'diode', 'indicator', 'emitter', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      ...diodePropertySchema,
+      luminousColor: { type: 'enum', label: 'Color', options: ['red', 'green', 'blue', 'white', 'amber'] },
+      ratedCurrentMa: { type: 'number', label: 'Rated current', unit: 'mA', min: 0 }
+    },
+    solverBehavior: { model: 'diode-led', propertyMap: { forwardDrop: 'forwardDrop', luminousColor: 'luminousColor', ratedCurrentMa: 'ratedCurrentMa' } },
+    support: { level: 'visual-only', notes: 'Optical output and color-dependent IV curves are not available in analyses.' },
+    defaultProps: { forwardDropVolts: 2, luminousColor: 'red', ratedCurrentMa: 20, reverseRecoveryNs: 25, junctionCapacitancePf: 25 },
+    metadata: { aliases: ['LED', 'Light Emitting Diode'] },
+    sidebar: { category: 'semiconductors', subcategory: 'rectifier' }
+  },
+  {
     id: 'bjt',
-    displayName: 'BJT',
+    displayName: 'BJT (NPN Small Signal)',
     kind: 'bjt',
     category: 'semiconductors',
     subcategory: 'transistor',
-    description: 'Generic NPN bipolar junction transistor symbol.',
-    tags: ['transistor', 'generic', 'bipolar'],
+    description: 'NPN small-signal bipolar transistor for amplification and switching.',
+    tags: ['transistor', 'bjt', 'npn', 'small-signal', 'bipolar'],
     pinCount: 3,
-    editablePropertySchema: {
-      beta: { type: 'number', label: 'Beta', min: 0 }
-    },
-    solverBehavior: { model: 'bjt', propertyMap: { beta: 'beta' } },
-    defaultProps: { beta: 100 },
+    editablePropertySchema: bjtPropertySchema,
+    solverBehavior: { model: 'bjt', propertyMap: { beta: 'beta', vbeOn: 'vbeOn' } },
+    support: { level: 'partial', notes: 'DC gain model only; capacitances are metadata for future AC/transient support.' },
+    defaultProps: { beta: 180, vbeOn: 0.68, collectorCurrentMaxA: 0.2, inputCapacitancePf: 12, outputCapacitancePf: 5 },
     metadata: {
-      aliases: ['Transistor'],
+      aliases: ['Transistor', 'NPN', '2N3904 style'],
       shortcut: { key: 'B' }
     },
     sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
   {
+    id: 'bjt-pnp-small-signal',
+    displayName: 'BJT (PNP Small Signal)',
+    kind: 'bjt',
+    category: 'semiconductors',
+    subcategory: 'transistor',
+    description: 'PNP complement of small-signal BJT for high-side stages.',
+    tags: ['transistor', 'bjt', 'pnp', 'small-signal', 'new'],
+    pinCount: 3,
+    editablePropertySchema: bjtPropertySchema,
+    solverBehavior: { model: 'bjt-pnp', propertyMap: { beta: 'beta', vbeOn: 'vbeOn' } },
+    support: { level: 'visual-only', notes: 'PNP polarity behavior is not explicitly modeled; use for documentation/layout only.' },
+    defaultProps: { beta: 150, vbeOn: 0.7, collectorCurrentMaxA: 0.2, inputCapacitancePf: 13, outputCapacitancePf: 6 },
+    metadata: { aliases: ['PNP', '2N3906 style'] },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
+  },
+  {
+    id: 'bjt-npn-power',
+    displayName: 'BJT (NPN Power)',
+    kind: 'bjt',
+    category: 'semiconductors',
+    subcategory: 'transistor',
+    description: 'NPN power transistor variant for higher collector currents.',
+    tags: ['transistor', 'bjt', 'npn', 'power', 'new'],
+    pinCount: 3,
+    editablePropertySchema: bjtPropertySchema,
+    solverBehavior: { model: 'bjt', propertyMap: { beta: 'beta', vbeOn: 'vbeOn' } },
+    support: { level: 'partial', notes: 'DC-only behavior; thermal and saturation-region effects are not modeled.' },
+    defaultProps: { beta: 55, vbeOn: 0.82, collectorCurrentMaxA: 5, inputCapacitancePf: 140, outputCapacitancePf: 70 },
+    metadata: { aliases: ['Power NPN', 'TIP41 style'] },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
+  },
+  {
+    id: 'bjt-pnp-power',
+    displayName: 'BJT (PNP Power)',
+    kind: 'bjt',
+    category: 'semiconductors',
+    subcategory: 'transistor',
+    description: 'PNP power transistor variant used in complementary output stages.',
+    tags: ['transistor', 'bjt', 'pnp', 'power', 'new'],
+    pinCount: 3,
+    editablePropertySchema: bjtPropertySchema,
+    solverBehavior: { model: 'bjt-pnp', propertyMap: { beta: 'beta', vbeOn: 'vbeOn' } },
+    support: { level: 'visual-only', notes: 'PNP conduction direction and power-region behavior are not modeled in analyses.' },
+    defaultProps: { beta: 45, vbeOn: 0.84, collectorCurrentMaxA: 5, inputCapacitancePf: 155, outputCapacitancePf: 80 },
+    metadata: { aliases: ['Power PNP', 'TIP42 style'] },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
+  },
+  {
     id: 'mosfet',
-    displayName: 'MOSFET',
+    displayName: 'MOSFET (NMOS Logic-Level)',
     kind: 'mosfet',
     category: 'semiconductors',
     subcategory: 'transistor',
-    description: 'Generic enhancement-mode MOSFET symbol.',
-    tags: ['transistor', 'generic', 'switch'],
+    description: 'NMOS logic-level MOSFET for low-voltage gate drive switching.',
+    tags: ['transistor', 'mosfet', 'nmos', 'logic-level', 'switch'],
     pinCount: 3,
-    editablePropertySchema: {
-      thresholdVoltage: { type: 'number', label: 'Threshold voltage', unit: 'V' },
-      onResistance: { type: 'number', label: 'On-state resistance', unit: 'Ω', min: 0 },
-      offLeakageCurrent: { type: 'number', label: 'Off leakage', unit: 'A', min: 0 },
-      hysteresis: { type: 'number', label: 'Hysteresis', unit: 'V', min: 0 }
-    },
+    editablePropertySchema: mosfetPropertySchema,
     solverBehavior: { model: 'mosfet', propertyMap: { thresholdVoltage: 'thresholdVoltage', onResistance: 'onResistance', offLeakageCurrent: 'offLeakageCurrent', hysteresis: 'hysteresis' } },
-    defaultProps: { thresholdVoltageVolts: 2.5, onResistance: 5, offLeakageCurrent: 0.000001, hysteresis: 0.05 },
+    support: { level: 'partial', notes: 'DC threshold/on-resistance model; capacitances and gate charge are currently informational.' },
+    defaultProps: { thresholdVoltageVolts: 1.8, onResistance: 0.04, offLeakageCurrent: 0.000001, hysteresis: 0.05, gateChargeNc: 9, inputCapacitancePf: 650, outputCapacitancePf: 120, reverseTransferCapacitancePf: 20 },
     metadata: {
-      aliases: ['FET'],
+      aliases: ['FET', 'NMOS', 'Logic MOSFET'],
       shortcut: { key: 'M' }
     },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
+  },
+  {
+    id: 'mosfet-pmos-logic',
+    displayName: 'MOSFET (PMOS Logic-Level)',
+    kind: 'mosfet',
+    category: 'semiconductors',
+    subcategory: 'transistor',
+    description: 'PMOS logic-level MOSFET for high-side switching at low voltages.',
+    tags: ['transistor', 'mosfet', 'pmos', 'logic-level', 'new'],
+    pinCount: 3,
+    editablePropertySchema: mosfetPropertySchema,
+    solverBehavior: { model: 'mosfet-pmos', propertyMap: { thresholdVoltage: 'thresholdVoltage', onResistance: 'onResistance', offLeakageCurrent: 'offLeakageCurrent', hysteresis: 'hysteresis' } },
+    support: { level: 'visual-only', notes: 'PMOS polarity inversion is not currently represented by solver equations.' },
+    defaultProps: { thresholdVoltageVolts: -1.6, onResistance: 0.07, offLeakageCurrent: 0.0000015, hysteresis: 0.04, gateChargeNc: 11, inputCapacitancePf: 780, outputCapacitancePf: 160, reverseTransferCapacitancePf: 24 },
+    metadata: { aliases: ['PMOS', 'P-channel MOSFET'] },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
+  },
+  {
+    id: 'mosfet-nmos-power',
+    displayName: 'MOSFET (NMOS Power)',
+    kind: 'mosfet',
+    category: 'semiconductors',
+    subcategory: 'transistor',
+    description: 'Power NMOS device emphasizing low RDS(on) and higher gate charge.',
+    tags: ['transistor', 'mosfet', 'nmos', 'power', 'new'],
+    pinCount: 3,
+    editablePropertySchema: mosfetPropertySchema,
+    solverBehavior: { model: 'mosfet', propertyMap: { thresholdVoltage: 'thresholdVoltage', onResistance: 'onResistance', offLeakageCurrent: 'offLeakageCurrent', hysteresis: 'hysteresis' } },
+    support: { level: 'partial', notes: 'DC-only switch approximation; switching losses and nonlinear capacitances are unavailable.' },
+    defaultProps: { thresholdVoltageVolts: 3, onResistance: 0.007, offLeakageCurrent: 0.00001, hysteresis: 0.06, gateChargeNc: 67, inputCapacitancePf: 5200, outputCapacitancePf: 820, reverseTransferCapacitancePf: 110 },
+    metadata: { aliases: ['Power NMOS', 'N-channel power MOSFET'] },
+    sidebar: { category: 'semiconductors', subcategory: 'transistor' }
+  },
+  {
+    id: 'mosfet-pmos-power',
+    displayName: 'MOSFET (PMOS Power)',
+    kind: 'mosfet',
+    category: 'semiconductors',
+    subcategory: 'transistor',
+    description: 'Power PMOS variant for high-side current switching.',
+    tags: ['transistor', 'mosfet', 'pmos', 'power', 'new'],
+    pinCount: 3,
+    editablePropertySchema: mosfetPropertySchema,
+    solverBehavior: { model: 'mosfet-pmos', propertyMap: { thresholdVoltage: 'thresholdVoltage', onResistance: 'onResistance', offLeakageCurrent: 'offLeakageCurrent', hysteresis: 'hysteresis' } },
+    support: { level: 'visual-only', notes: 'Power PMOS conduction behavior is not available in DC, AC, transient, or Monte Carlo analyses.' },
+    defaultProps: { thresholdVoltageVolts: -3.1, onResistance: 0.011, offLeakageCurrent: 0.000012, hysteresis: 0.05, gateChargeNc: 74, inputCapacitancePf: 6100, outputCapacitancePf: 950, reverseTransferCapacitancePf: 140 },
+    metadata: { aliases: ['Power PMOS', 'P-channel power MOSFET'] },
     sidebar: { category: 'semiconductors', subcategory: 'transistor' }
   },
   {

@@ -56,6 +56,20 @@ describe('ComponentLibrarySidebar', () => {
 
 
 
+
+  it('finds semiconductor families by common aliases', () => {
+    render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'zener' } });
+    expect(screen.getByText('Diode (Zener)')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'pmos' } });
+    expect(screen.getByText('MOSFET (PMOS Logic-Level)')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'led' } });
+    expect(screen.getByText('Diode (LED)')).toBeTruthy();
+  });
+
   it('supports combined multi-filter selection and quick toggles', () => {
     render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
 
