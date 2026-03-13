@@ -53,6 +53,12 @@ const getCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefined =>
     case 'logic-flip-flop':
     case 'logic-counter':
     case 'logic-multiplexer':
+    case 'sensor-thermistor-probe':
+    case 'sensor-ldr':
+    case 'sensor-hall':
+    case 'sensor-pressure':
+    case 'sensor-microphone':
+    case 'sensor-analog-generic':
     case 'wire':
       return value;
     default:
@@ -96,7 +102,19 @@ const normalizeCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefi
                         ? 'logic-counter'
                         : value === 'logicMultiplexer'
                           ? 'logic-multiplexer'
-                          : value;
+                          : value === 'sensorThermistorProbe'
+                            ? 'sensor-thermistor-probe'
+                            : value === 'sensorLdr'
+                              ? 'sensor-ldr'
+                              : value === 'sensorHall'
+                                ? 'sensor-hall'
+                                : value === 'sensorPressure'
+                                  ? 'sensor-pressure'
+                                  : value === 'sensorMicrophone'
+                                    ? 'sensor-microphone'
+                                    : value === 'sensorAnalogGeneric'
+                                      ? 'sensor-analog-generic'
+                                      : value;
 
   return getCatalogTypeId(renamed);
 };
@@ -307,6 +325,26 @@ const normalizeComponent = (component: unknown): CircuitComponent | undefined =>
           highLevel: normalizeValueMetadata(asRecord(record.bridge)?.highLevel, 'V', 5),
           lowLevel: normalizeValueMetadata(asRecord(record.bridge)?.lowLevel, 'V', 0)
         }
+      };
+    case 'sensor-thermistor-probe':
+    case 'sensor-ldr':
+    case 'sensor-hall':
+    case 'sensor-pressure':
+    case 'sensor-microphone':
+    case 'sensor-analog-generic':
+      return {
+        id,
+        from,
+        to,
+        kind: 'sensor',
+        catalogTypeId,
+        label: asString(record.label) ?? `S-${id}`,
+        sensitivity: normalizeValueMetadata(record.sensitivity, 'V', 1),
+        offset: normalizeValueMetadata(record.offset, 'V', 0),
+        inputSignal: normalizeValueMetadata(record.inputSignal ?? record.input, 'V', 0),
+        supplyMin: normalizeValueMetadata(record.supplyMin, 'V', 0),
+        supplyMax: normalizeValueMetadata(record.supplyMax, 'V', 5),
+        outputClampBehavior: (asString(record.outputClampBehavior) as 'none' | 'saturate' | undefined) ?? 'saturate'
       };
     case 'wire':
       return {

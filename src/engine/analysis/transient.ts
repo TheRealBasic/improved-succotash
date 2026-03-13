@@ -59,6 +59,16 @@ const solveLinearSystem = (A: number[][], b: number[]): number[] => {
 };
 
 const sourceVoltageAt = (component: CircuitComponent, time: number, sourceSteps?: TransientAnalysisOptions['sourceSteps']): number => {
+  if (component.kind === 'sensor') {
+    const sensitivity = component.sensitivity.value ?? 0;
+    const offset = component.offset.value ?? 0;
+    const input = component.inputSignal.value ?? 0;
+    const unclamped = offset + sensitivity * input;
+    if (component.outputClampBehavior === 'saturate') {
+      return Math.min(Math.max(unclamped, component.supplyMin.value ?? Number.NEGATIVE_INFINITY), component.supplyMax.value ?? Number.POSITIVE_INFINITY);
+    }
+    return unclamped;
+  }
   if (!['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump'].includes(component.catalogTypeId)) {
     return 0;
   }
@@ -76,7 +86,7 @@ export const runTransientAnalysis = (circuit: CircuitState, options: TransientAn
 
   const nodeIds = supportedCircuit.nodes.filter((node) => !node.reference).map((node) => node.id);
   const nodeMap = new Map(nodeIds.map((id, idx) => [id, idx]));
-  const voltageSources = supportedCircuit.components.filter((component) => ['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump','wire'].includes(component.catalogTypeId));
+  const voltageSources = supportedCircuit.components.filter((component) => ['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump','wire'].includes(component.catalogTypeId) || component.kind === 'sensor');
   const size = nodeIds.length + voltageSources.length;
 
   const capacitorState = new Map<string, number>();

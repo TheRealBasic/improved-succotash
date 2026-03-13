@@ -59,6 +59,12 @@ export type ComponentCatalogTypeId =
   | 'logic-flip-flop'
   | 'logic-counter'
   | 'logic-multiplexer'
+  | 'sensor-thermistor-probe'
+  | 'sensor-ldr'
+  | 'sensor-hall'
+  | 'sensor-pressure'
+  | 'sensor-microphone'
+  | 'sensor-analog-generic'
   | 'wire';
 
 export type LogicGateType = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor';
@@ -208,6 +214,19 @@ export type WireComponent = ComponentBase & {
   catalogTypeId: 'wire';
 };
 
+export type SensorClampBehavior = 'none' | 'saturate';
+
+export type SensorComponent = ComponentBase & {
+  kind: 'sensor';
+  catalogTypeId: 'sensor-thermistor-probe' | 'sensor-ldr' | 'sensor-hall' | 'sensor-pressure' | 'sensor-microphone' | 'sensor-analog-generic';
+  sensitivity: ValueMetadata;
+  offset: ValueMetadata;
+  inputSignal: ValueMetadata;
+  supplyMin: ValueMetadata;
+  supplyMax: ValueMetadata;
+  outputClampBehavior: SensorClampBehavior;
+};
+
 
 export type CircuitComponent =
   | ResistorComponent
@@ -221,6 +240,7 @@ export type CircuitComponent =
   | ControlledSwitchComponent
   | OpAmpComponent
   | LogicGateComponent
+  | SensorComponent
   | WireComponent;
 
 export type CircuitEdge = {

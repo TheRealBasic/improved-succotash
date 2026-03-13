@@ -129,6 +129,26 @@ const componentFactory = (catalogTypeId: ComponentCatalogTypeId, id: string, fro
         pullDefault: 'none',
         bridge: { highThreshold: createValueMetadata('V', 3), lowThreshold: createValueMetadata('V', 1), highLevel: createValueMetadata('V', 5), lowLevel: createValueMetadata('V', 0) }
       };
+    case 'sensor-thermistor-probe':
+    case 'sensor-ldr':
+    case 'sensor-hall':
+    case 'sensor-pressure':
+    case 'sensor-microphone':
+    case 'sensor-analog-generic':
+      return {
+        id,
+        kind: 'sensor',
+        catalogTypeId,
+        from,
+        to,
+        label: `S-${id}`,
+        sensitivity: createValueMetadata('V', 1),
+        offset: createValueMetadata('V', 0),
+        inputSignal: createValueMetadata('V', 0),
+        supplyMin: createValueMetadata('V', 0),
+        supplyMax: createValueMetadata('V', 5),
+        outputClampBehavior: 'saturate'
+      };
     case 'wire':
       return { id, kind: 'passive2p', catalogTypeId, from, to, label: 'wire' };
     default:
@@ -628,7 +648,12 @@ const App = () => {
         'propagationDelayNs',
         'lowThreshold',
         'highLevel',
-        'lowLevel'
+        'lowLevel',
+        'sensitivity',
+        'offset',
+        'inputSignal',
+        'supplyMin',
+        'supplyMax'
       ].includes(valueKey) && typeof value === 'number';
       const isEditableGateType = valueKey === 'gateType' && component.kind === 'digital' && typeof value === 'string';
       if (isEditableNumeric || isEditableGateType) {
@@ -707,6 +732,24 @@ const App = () => {
         }
         if (valueKey === 'controlSignal' && component.kind === 'switch' && 'controlSignal' in component && typeof value === 'number') {
           return { ...component, controlSignal: { ...(component.controlSignal ?? createValueMetadata('ns', 0)), value } };
+        }
+        if (valueKey === 'sensitivity' && component.kind === 'sensor' && typeof value === 'number') {
+          return { ...component, sensitivity: { ...component.sensitivity, value } };
+        }
+        if (valueKey === 'offset' && component.kind === 'sensor' && typeof value === 'number') {
+          return { ...component, offset: { ...component.offset, value } };
+        }
+        if (valueKey === 'inputSignal' && component.kind === 'sensor' && typeof value === 'number') {
+          return { ...component, inputSignal: { ...component.inputSignal, value } };
+        }
+        if (valueKey === 'supplyMin' && component.kind === 'sensor' && typeof value === 'number') {
+          return { ...component, supplyMin: { ...component.supplyMin, value } };
+        }
+        if (valueKey === 'supplyMax' && component.kind === 'sensor' && typeof value === 'number') {
+          return { ...component, supplyMax: { ...component.supplyMax, value } };
+        }
+        if (valueKey === 'outputClampBehavior' && component.kind === 'sensor' && typeof value === 'string') {
+          return { ...component, outputClampBehavior: value as typeof component.outputClampBehavior };
         }
         if (valueKey === 'gateType' && component.kind === 'digital' && typeof value === 'string') {
           return { ...component, gateType: value as typeof component.gateType };

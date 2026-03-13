@@ -555,6 +555,66 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "rendererId": "line-only",
   },
   {
+    "category": "sensors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "sensor-analog-generic",
+    "kind": "sensor-analog-generic",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sensors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "sensor-hall",
+    "kind": "sensor-hall",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sensors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "sensor-ldr",
+    "kind": "sensor-ldr",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sensors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "sensor-microphone",
+    "kind": "sensor-microphone",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sensors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "sensor-pressure",
+    "kind": "sensor-pressure",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sensors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "sensor-thermistor-probe",
+    "kind": "sensor-thermistor-probe",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
     "category": "specialty",
     "expectedPinCounts": [
       0,

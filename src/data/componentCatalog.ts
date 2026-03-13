@@ -283,6 +283,25 @@ const digitalThresholdPropertyMap = {
   lowLevel: 'bridge.lowLevel'
 };
 
+
+const sensorPropertySchema: Record<string, ComponentEditableProperty> = {
+  sensitivity: { type: 'number', label: 'Sensitivity', unit: 'V' },
+  offset: { type: 'number', label: 'Offset', unit: 'V' },
+  inputSignal: { type: 'number', label: 'Input stimulus', unit: 'V' },
+  supplyMin: { type: 'number', label: 'Supply minimum', unit: 'V' },
+  supplyMax: { type: 'number', label: 'Supply maximum', unit: 'V' },
+  outputClampBehavior: { type: 'enum', label: 'Output clamp', options: ['none', 'saturate'] }
+};
+
+const sensorPropertyMap = {
+  sensitivity: 'sensitivity',
+  offset: 'offset',
+  inputSignal: 'inputSignal',
+  supplyMin: 'supplyMin',
+  supplyMax: 'supplyMax',
+  outputClampBehavior: 'outputClampBehavior'
+};
+
 const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   {
     id: 'resistor',
@@ -1426,6 +1445,103 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     defaultProps: { gateType: 'or', logicFamily: 'HC', propagationDelayNs: 16, pullDefault: 'none', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'multiplexer' },
     metadata: { aliases: ['MUX', 'Selector'] },
     sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+
+  {
+    id: 'sensor-thermistor-probe',
+    displayName: 'Thermistor Probe Sensor',
+    kind: 'sensor-thermistor-probe',
+    category: 'sensors',
+    subcategory: 'generic',
+    description: 'Temperature sensor transfer source with configurable sensitivity and clamp behavior.',
+    tags: ['sensor', 'temperature', 'analog', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sensorPropertySchema,
+    solverBehavior: { model: 'sensor-transfer', propertyMap: sensorPropertyMap },
+    support: { level: 'full' },
+    defaultProps: { sensitivity: 0.01, offset: 0.5, inputSignal: 25, supplyMin: 0, supplyMax: 3.3, outputClampBehavior: 'saturate' },
+    metadata: { aliases: ['Thermistor probe', 'Temp sensor'] },
+    sidebar: { category: 'sensors', subcategory: 'generic' }
+  },
+  {
+    id: 'sensor-ldr',
+    displayName: 'LDR Sensor',
+    kind: 'sensor-ldr',
+    category: 'sensors',
+    subcategory: 'generic',
+    description: 'Light-dependent resistor sensor represented as transfer-function output source.',
+    tags: ['sensor', 'light', 'analog', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sensorPropertySchema,
+    solverBehavior: { model: 'sensor-transfer', propertyMap: sensorPropertyMap },
+    support: { level: 'full' },
+    defaultProps: { sensitivity: 0.004, offset: 0.1, inputSignal: 100, supplyMin: 0, supplyMax: 5, outputClampBehavior: 'saturate' },
+    metadata: { aliases: ['Photoresistor', 'LDR'] },
+    sidebar: { category: 'sensors', subcategory: 'generic' }
+  },
+  {
+    id: 'sensor-hall',
+    displayName: 'Hall Sensor',
+    kind: 'sensor-hall',
+    category: 'sensors',
+    subcategory: 'generic',
+    description: 'Hall-effect magnetic field sensor macro with linear transfer and optional clamping.',
+    tags: ['sensor', 'magnetic', 'analog', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sensorPropertySchema,
+    solverBehavior: { model: 'sensor-transfer', propertyMap: sensorPropertyMap },
+    support: { level: 'full' },
+    defaultProps: { sensitivity: 0.02, offset: 1.65, inputSignal: 0, supplyMin: 0, supplyMax: 3.3, outputClampBehavior: 'saturate' },
+    metadata: { aliases: ['Mag sensor', 'Hall effect'] },
+    sidebar: { category: 'sensors', subcategory: 'generic' }
+  },
+  {
+    id: 'sensor-pressure',
+    displayName: 'Pressure Sensor',
+    kind: 'sensor-pressure',
+    category: 'sensors',
+    subcategory: 'generic',
+    description: 'Pressure transducer transfer-function model outputting proportional voltage.',
+    tags: ['sensor', 'pressure', 'analog', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sensorPropertySchema,
+    solverBehavior: { model: 'sensor-transfer', propertyMap: sensorPropertyMap },
+    support: { level: 'full' },
+    defaultProps: { sensitivity: 0.045, offset: 0.5, inputSignal: 20, supplyMin: 0, supplyMax: 5, outputClampBehavior: 'saturate' },
+    metadata: { aliases: ['Pressure transducer'] },
+    sidebar: { category: 'sensors', subcategory: 'generic' }
+  },
+  {
+    id: 'sensor-microphone',
+    displayName: 'Microphone Sensor',
+    kind: 'sensor-microphone',
+    category: 'sensors',
+    subcategory: 'generic',
+    description: 'Microphone analog front-end source using sensitivity + offset transfer behavior.',
+    tags: ['sensor', 'audio', 'analog', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sensorPropertySchema,
+    solverBehavior: { model: 'sensor-transfer', propertyMap: sensorPropertyMap },
+    support: { level: 'full' },
+    defaultProps: { sensitivity: 0.25, offset: 1.25, inputSignal: 0.02, supplyMin: 0, supplyMax: 2.5, outputClampBehavior: 'saturate' },
+    metadata: { aliases: ['Mic', 'Electret sensor'] },
+    sidebar: { category: 'sensors', subcategory: 'generic' }
+  },
+  {
+    id: 'sensor-analog-generic',
+    displayName: 'Generic Analog Sensor',
+    kind: 'sensor-analog-generic',
+    category: 'sensors',
+    subcategory: 'generic',
+    description: 'Generic analog transfer-function sensor source for custom stimuli.',
+    tags: ['sensor', 'analog', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sensorPropertySchema,
+    solverBehavior: { model: 'sensor-transfer', propertyMap: sensorPropertyMap },
+    support: { level: 'full' },
+    defaultProps: { sensitivity: 1, offset: 0, inputSignal: 1, supplyMin: -10, supplyMax: 10, outputClampBehavior: 'none' },
+    metadata: { aliases: ['Generic sensor'] },
+    sidebar: { category: 'sensors', subcategory: 'generic' }
   },
   {
     id: 'ne555',
