@@ -337,6 +337,66 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "rendererId": "subcircuit-placeholder",
   },
   {
+    "category": "specialty",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "switch-analog",
+    "kind": "switch-analog",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "specialty",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "relay-reed",
+    "kind": "relay-reed",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "specialty",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "relay-ssr",
+    "kind": "relay-ssr",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "specialty",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "switch-dpdt",
+    "kind": "switch-dpdt",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "specialty",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "switch-spdt",
+    "kind": "switch-spdt",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "specialty",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "switch-spst",
+    "kind": "switch-spst",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
     "category": "rf",
     "expectedPinCounts": [
       3,

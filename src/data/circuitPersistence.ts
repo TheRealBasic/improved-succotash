@@ -34,6 +34,12 @@ const getCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefined =>
     case 'diode':
     case 'bjt':
     case 'mosfet':
+    case 'switch-spst':
+    case 'switch-spdt':
+    case 'switch-dpdt':
+    case 'relay-reed':
+    case 'relay-ssr':
+    case 'switch-analog':
     case 'op-amp':
     case 'logic-gate':
     case 'wire':
@@ -198,7 +204,31 @@ const normalizeComponent = (component: unknown): CircuitComponent | undefined =>
         catalogTypeId,
         label: asString(record.label) ?? `M-${id}`,
         thresholdVoltage: normalizeValueMetadata(record.thresholdVoltage ?? record.vth, 'V', 2),
-        onResistance: normalizeValueMetadata(record.onResistance ?? record.ron, 'Ω', 5, { min: 0.001, nonZero: true })
+        onResistance: normalizeValueMetadata(record.onResistance ?? record.ron, 'Ω', 5, { min: 0.001, nonZero: true }),
+        offLeakageCurrent: normalizeValueMetadata(record.offLeakageCurrent ?? record.ioff, 'A', 0.000001, { min: 0 }),
+        hysteresis: normalizeValueMetadata(record.hysteresis, 'V', 0.05, { min: 0 }),
+        controlSignal: normalizeValueMetadata(record.controlSignal, 'V', 0)
+      };
+
+    case 'switch-spst':
+    case 'switch-spdt':
+    case 'switch-dpdt':
+    case 'relay-reed':
+    case 'relay-ssr':
+    case 'switch-analog':
+      return {
+        id,
+        from,
+        to,
+        kind: 'switch',
+        catalogTypeId,
+        label: asString(record.label) ?? `SW-${id}`,
+        onResistance: normalizeValueMetadata(record.onResistance ?? record.ron, 'Ω', 0.02, { min: 0, nonZero: true }),
+        offLeakageCurrent: normalizeValueMetadata(record.offLeakageCurrent ?? record.ioff, 'A', 0.000001, { min: 0 }),
+        controlThreshold: normalizeValueMetadata(record.controlThreshold ?? record.vth, 'V', 2.5),
+        hysteresis: normalizeValueMetadata(record.hysteresis, 'V', 0.05, { min: 0 }),
+        controlSignal: normalizeValueMetadata(record.controlSignal, 'V', 0),
+        state: (asString(record.state) as 'open' | 'closed' | undefined) ?? 'open'
       };
     case 'op-amp':
       return {

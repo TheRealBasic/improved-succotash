@@ -68,7 +68,28 @@ const componentFactory = (catalogTypeId: ComponentCatalogTypeId, id: string, fro
     case 'bjt':
       return { id, kind: 'switch', catalogTypeId, from, to, label: `Q-${id}`, beta: createValueMetadata('A', 100), vbeOn: createValueMetadata('V', 0.7) };
     case 'mosfet':
-      return { id, kind: 'switch', catalogTypeId, from, to, label: `M-${id}`, thresholdVoltage: createValueMetadata('V', 2), onResistance: createValueMetadata('Ω', 5, { min: 0.001, nonZero: true }) };
+      return { id, kind: 'switch', catalogTypeId, from, to, label: `M-${id}`, thresholdVoltage: createValueMetadata('V', 2), onResistance: createValueMetadata('Ω', 5, { min: 0.001, nonZero: true }), offLeakageCurrent: createValueMetadata('A', 0.000001, { min: 0 }), hysteresis: createValueMetadata('V', 0.05, { min: 0 }), controlSignal: createValueMetadata('V', 0) };
+
+    case 'switch-spst':
+    case 'switch-spdt':
+    case 'switch-dpdt':
+    case 'relay-reed':
+    case 'relay-ssr':
+    case 'switch-analog':
+      return {
+        id,
+        kind: 'switch',
+        catalogTypeId,
+        from,
+        to,
+        label: `SW-${id}`,
+        onResistance: createValueMetadata('Ω', 0.02, { min: 0, nonZero: true }),
+        offLeakageCurrent: createValueMetadata('A', 0.000001, { min: 0 }),
+        controlThreshold: createValueMetadata('V', 2.5),
+        hysteresis: createValueMetadata('V', 0.05, { min: 0 }),
+        controlSignal: createValueMetadata('V', 0),
+        state: 'open'
+      };
     case 'op-amp':
       return { id, kind: 'amplifier', catalogTypeId, from, to, label: `U-${id}`, gain: createValueMetadata('V', 100000), outputLimitHigh: createValueMetadata('V', 12), outputLimitLow: createValueMetadata('V', -12) };
     case 'logic-gate':
@@ -561,7 +582,12 @@ const App = () => {
         'beta',
         'thresholdVoltage',
         'gain',
-        'highThreshold'
+        'highThreshold',
+        'onResistance',
+        'offLeakageCurrent',
+        'controlThreshold',
+        'hysteresis',
+        'controlSignal'
       ].includes(valueKey) && typeof value === 'number';
       const isEditableGateType = valueKey === 'gateType' && component.catalogTypeId === 'logic-gate' && typeof value === 'string';
       if (isEditableNumeric || isEditableGateType) {
@@ -612,6 +638,22 @@ const App = () => {
         }
         if (valueKey === 'highThreshold' && component.catalogTypeId === 'logic-gate' && typeof value === 'number') {
           return { ...component, bridge: { ...component.bridge, highThreshold: { ...component.bridge.highThreshold, value } } };
+        }
+
+        if (valueKey === 'onResistance' && component.kind === 'switch' && 'onResistance' in component && typeof value === 'number') {
+          return { ...component, onResistance: { ...component.onResistance, value } };
+        }
+        if (valueKey === 'offLeakageCurrent' && component.kind === 'switch' && 'offLeakageCurrent' in component && typeof value === 'number') {
+          return { ...component, offLeakageCurrent: { ...component.offLeakageCurrent, value } };
+        }
+        if (valueKey === 'controlThreshold' && component.kind === 'switch' && 'controlThreshold' in component && typeof value === 'number') {
+          return { ...component, controlThreshold: { ...component.controlThreshold, value } };
+        }
+        if (valueKey === 'hysteresis' && component.kind === 'switch' && 'hysteresis' in component && typeof value === 'number') {
+          return { ...component, hysteresis: { ...(component.hysteresis ?? createValueMetadata('V', 0)), value } };
+        }
+        if (valueKey === 'controlSignal' && component.kind === 'switch' && 'controlSignal' in component && typeof value === 'number') {
+          return { ...component, controlSignal: { ...(component.controlSignal ?? createValueMetadata('V', 0)), value } };
         }
         if (valueKey === 'gateType' && component.catalogTypeId === 'logic-gate' && typeof value === 'string') {
           return { ...component, gateType: value as typeof component.gateType };

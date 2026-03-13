@@ -204,6 +204,21 @@ const migrateCatalogItem = (item: LegacyComponentCatalogItem): ComponentCatalogI
   compatibilityTags: item.compatibilityTags ?? [item.kind, item.category]
 });
 
+
+const sharedSwitchPropertySchema: Record<string, ComponentEditableProperty> = {
+  onResistance: { type: 'number', label: 'On-state resistance', unit: 'Ω', min: 0 },
+  offLeakageCurrent: { type: 'number', label: 'Off leakage', unit: 'A', min: 0 },
+  controlThreshold: { type: 'number', label: 'Control threshold', unit: 'V' },
+  hysteresis: { type: 'number', label: 'Hysteresis', unit: 'V', min: 0 }
+};
+
+const sharedSwitchPropertyMap = {
+  onResistance: 'onResistance',
+  offLeakageCurrent: 'offLeakageCurrent',
+  controlThreshold: 'controlThreshold',
+  hysteresis: 'hysteresis'
+};
+
 const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   {
     id: 'resistor',
@@ -800,6 +815,103 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     metadata: { aliases: ['Constant current source'], shortcut: { key: 'X', id: 'place-current-reg' } },
     sidebar: { category: 'power', subcategory: 'current' }
   },
+
+  {
+    id: 'switch-spst',
+    displayName: 'Switch (SPST)',
+    kind: 'switch-spst',
+    category: 'specialty',
+    subcategory: 'other',
+    description: 'Single-pole single-throw switch with configurable control threshold.',
+    tags: ['switch', 'spst', 'relay', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sharedSwitchPropertySchema,
+    solverBehavior: { model: 'shared-switch', propertyMap: sharedSwitchPropertyMap },
+    support: { level: 'partial', notes: 'DC state model only.' },
+    defaultProps: { onResistance: 0.01, offLeakageCurrent: 0.000001, controlThreshold: 2.5, hysteresis: 0.05 },
+    metadata: { aliases: ['SPST'], shortcut: { key: '1', id: 'place-switch-spst' } },
+    sidebar: { category: 'relays', subcategory: 'spst_spdt' }
+  },
+  {
+    id: 'switch-spdt',
+    displayName: 'Switch (SPDT)',
+    kind: 'switch-spdt',
+    category: 'specialty',
+    subcategory: 'other',
+    description: 'Single-pole double-throw modeled as a controlled 2-terminal path.',
+    tags: ['switch', 'spdt', 'relay', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sharedSwitchPropertySchema,
+    solverBehavior: { model: 'shared-switch', propertyMap: sharedSwitchPropertyMap },
+    support: { level: 'partial', notes: 'Equivalent-path abstraction for DC solver.' },
+    defaultProps: { onResistance: 0.015, offLeakageCurrent: 0.000001, controlThreshold: 2.5, hysteresis: 0.08 },
+    metadata: { aliases: ['SPDT'], shortcut: { key: '2', id: 'place-switch-spdt' } },
+    sidebar: { category: 'relays', subcategory: 'spst_spdt' }
+  },
+  {
+    id: 'switch-dpdt',
+    displayName: 'Switch (DPDT)',
+    kind: 'switch-dpdt',
+    category: 'specialty',
+    subcategory: 'other',
+    description: 'Double-pole double-throw switch abstraction using shared switching behavior.',
+    tags: ['switch', 'dpdt', 'relay', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sharedSwitchPropertySchema,
+    solverBehavior: { model: 'shared-switch', propertyMap: sharedSwitchPropertyMap },
+    support: { level: 'partial', notes: 'Equivalent-path abstraction for DC solver.' },
+    defaultProps: { onResistance: 0.02, offLeakageCurrent: 0.000002, controlThreshold: 3, hysteresis: 0.1 },
+    metadata: { aliases: ['DPDT'], shortcut: { key: '3', id: 'place-switch-dpdt' } },
+    sidebar: { category: 'relays', subcategory: 'spst_spdt' }
+  },
+  {
+    id: 'relay-reed',
+    displayName: 'Reed Relay',
+    kind: 'relay-reed',
+    category: 'specialty',
+    subcategory: 'other',
+    description: 'Magnetically actuated reed relay with low on-resistance contact model.',
+    tags: ['relay', 'reed', 'switch', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sharedSwitchPropertySchema,
+    solverBehavior: { model: 'shared-switch', propertyMap: sharedSwitchPropertyMap },
+    support: { level: 'partial', notes: 'Idealized relay contact state in DC analysis.' },
+    defaultProps: { onResistance: 0.05, offLeakageCurrent: 0.0000005, controlThreshold: 3.3, hysteresis: 0.15 },
+    metadata: { aliases: ['Reed'], shortcut: { key: '4', id: 'place-relay-reed' } },
+    sidebar: { category: 'relays', subcategory: 'reed' }
+  },
+  {
+    id: 'relay-ssr',
+    displayName: 'Solid-State Relay (SSR)',
+    kind: 'relay-ssr',
+    category: 'specialty',
+    subcategory: 'other',
+    description: 'Solid-state relay model with low leakage and configurable threshold.',
+    tags: ['relay', 'ssr', 'switch', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sharedSwitchPropertySchema,
+    solverBehavior: { model: 'shared-switch', propertyMap: sharedSwitchPropertyMap },
+    support: { level: 'partial', notes: 'DC-only switched conductance model.' },
+    defaultProps: { onResistance: 1, offLeakageCurrent: 0.00001, controlThreshold: 1.2, hysteresis: 0.03 },
+    metadata: { aliases: ['SSR'], shortcut: { key: '5', id: 'place-relay-ssr' } },
+    sidebar: { category: 'relays', subcategory: 'solid-state' }
+  },
+  {
+    id: 'switch-analog',
+    displayName: 'Analog Switch',
+    kind: 'switch-analog',
+    category: 'specialty',
+    subcategory: 'other',
+    description: 'IC-style analog switch channel with threshold and hysteresis controls.',
+    tags: ['switch', 'analog', 'ic', 'new'],
+    pinCount: 2,
+    editablePropertySchema: sharedSwitchPropertySchema,
+    solverBehavior: { model: 'shared-switch', propertyMap: sharedSwitchPropertyMap },
+    support: { level: 'partial', notes: 'Single-channel equivalent switch in DC analysis.' },
+    defaultProps: { onResistance: 8, offLeakageCurrent: 0.0000001, controlThreshold: 2, hysteresis: 0.05 },
+    metadata: { aliases: ['Transmission gate'], shortcut: { key: '6', id: 'place-switch-analog' } },
+    sidebar: { category: 'relays', subcategory: 'solid-state' }
+  },
   {
     id: 'diode',
     displayName: 'Diode',
@@ -850,10 +962,13 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     tags: ['transistor', 'generic', 'switch'],
     pinCount: 3,
     editablePropertySchema: {
-      thresholdVoltage: { type: 'number', label: 'Threshold voltage', unit: 'V' }
+      thresholdVoltage: { type: 'number', label: 'Threshold voltage', unit: 'V' },
+      onResistance: { type: 'number', label: 'On-state resistance', unit: 'Ω', min: 0 },
+      offLeakageCurrent: { type: 'number', label: 'Off leakage', unit: 'A', min: 0 },
+      hysteresis: { type: 'number', label: 'Hysteresis', unit: 'V', min: 0 }
     },
-    solverBehavior: { model: 'mosfet', propertyMap: { thresholdVoltage: 'thresholdVoltage' } },
-    defaultProps: { thresholdVoltageVolts: 2.5 },
+    solverBehavior: { model: 'mosfet', propertyMap: { thresholdVoltage: 'thresholdVoltage', onResistance: 'onResistance', offLeakageCurrent: 'offLeakageCurrent', hysteresis: 'hysteresis' } },
+    defaultProps: { thresholdVoltageVolts: 2.5, onResistance: 5, offLeakageCurrent: 0.000001, hysteresis: 0.05 },
     metadata: {
       aliases: ['FET'],
       shortcut: { key: 'M' }

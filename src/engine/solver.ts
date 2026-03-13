@@ -15,7 +15,7 @@ import type {
   ValueConstraint,
   ValueMetadata
 } from './model';
-import { assertNever, filterCircuitByCapability, getUnsupportedComponentDiagnostics } from './componentBehavior';
+import { assertNever, filterCircuitByCapability, getUnsupportedComponentDiagnostics, usesSharedSwitchBehavior } from './componentBehavior';
 
 export type SolveCircuitOptions = {
   monteCarlo?: MonteCarloOptions;
@@ -60,6 +60,10 @@ const diagnosticGuidanceByCode: Partial<Record<SolverDiagnostic['code'], Diagnos
     why: 'The equation set includes contradictory constraints, so no solution satisfies all of them.',
     suggestedFix: 'Remove or correct conflicting constraints such as incompatible source settings.'
   },
+  switch_fallback_applied: {
+    why: 'A switch could not be treated as an ideal open/closed element because its control data is incomplete or numerically unstable.',
+    suggestedFix: 'Set valid on-resistance, off-leakage, threshold, and optional hysteresis values.'
+  },
   unsupported_analysis_mode: {
     why: 'The selected analysis mode does not support the behavior model of one or more placed components.',
     suggestedFix: 'Switch to a supported analysis mode or replace unsupported parts with supported equivalents.'
@@ -89,6 +93,12 @@ const componentUnits: Partial<Record<CircuitComponent['catalogTypeId'], Unit>> =
   diode: 'V',
   bjt: 'A',
   mosfet: 'V',
+  'switch-spst': 'V',
+  'switch-spdt': 'V',
+  'switch-dpdt': 'V',
+  'relay-reed': 'V',
+  'relay-ssr': 'V',
+  'switch-analog': 'V',
   'op-amp': 'V',
   'logic-gate': 'V'
 };
@@ -137,6 +147,13 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
       return component.beta;
     case 'mosfet':
       return component.thresholdVoltage;
+    case 'switch-spst':
+    case 'switch-spdt':
+    case 'switch-dpdt':
+    case 'relay-reed':
+    case 'relay-ssr':
+    case 'switch-analog':
+      return component.controlThreshold;
     case 'op-amp':
       return component.gain;
     case 'logic-gate':
@@ -146,6 +163,73 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
     default:
       return undefined;
   }
+};
+
+
+const getSwitchEquivalentResistance = (
+  component: Extract<CircuitComponent, { kind: 'switch' }>,
+  nodeVoltages: Map<string, number>,
+  diagnostics: SolverDiagnostic[]
+): number => {
+  if (component.catalogTypeId === 'diode') {
+    const vd = component.forwardDrop.value ?? 0.7;
+    const ron = Math.max(component.onResistance.value ?? 10, 1e-9);
+    const roff = Math.max(component.offResistance.value ?? 1e6, 1e-6);
+    const fromKnown = nodeVoltages.get(component.from) ?? 0;
+    const toKnown = nodeVoltages.get(component.to) ?? 0;
+    return fromKnown - toKnown >= vd ? ron : roff;
+  }
+
+  if (component.catalogTypeId === 'bjt') {
+    const beta = Math.max(component.beta.value ?? 100, 1e-9);
+    return Math.max(1000 / beta, 1e-6);
+  }
+
+  const fallbackOn = 1e-6;
+  const fallbackOff = 1e12;
+
+  if (component.catalogTypeId === 'mosfet' || usesSharedSwitchBehavior(component.catalogTypeId)) {
+    const onResistanceRaw = component.onResistance.value;
+    const onResistance = onResistanceRaw != null && Number.isFinite(onResistanceRaw) && onResistanceRaw > 0 ? onResistanceRaw : fallbackOn;
+    const offLeakage = 'offLeakageCurrent' in component ? component.offLeakageCurrent.value ?? 0 : 0;
+    const controlThreshold = component.catalogTypeId === 'mosfet'
+      ? component.thresholdVoltage.value ?? 0
+      : component.controlThreshold.value ?? 0;
+    const hysteresis = component.hysteresis?.value ?? 0;
+    const controlSignal = component.controlSignal?.value ?? 0;
+    const prevState = 'state' in component ? component.state : undefined;
+    const closedThreshold = controlThreshold + Math.max(hysteresis, 0) / 2;
+    const openThreshold = controlThreshold - Math.max(hysteresis, 0) / 2;
+
+    let isClosed = controlSignal >= closedThreshold;
+    if (prevState === 'closed' && controlSignal > openThreshold) {
+      isClosed = true;
+    }
+    if (prevState === 'open' && controlSignal < closedThreshold) {
+      isClosed = false;
+    }
+
+    if (!Number.isFinite(onResistanceRaw ?? Number.NaN) || onResistanceRaw == null || onResistanceRaw <= 0) {
+      diagnostics.push({
+        code: 'unsupported_component_behavior',
+        severity: 'warning',
+        message: `Switch ${component.id} has invalid on-resistance; using near-ideal fallback.`,
+        componentId: component.id
+      });
+      diagnostics.push({
+        code: 'switch_fallback_applied' as SolverDiagnostic['code'],
+        severity: 'info',
+        message: `Switch ${component.id} fallback applied for on-state resistance.`,
+        componentId: component.id
+      });
+    }
+
+    const leakageReference = Math.max(Math.abs(controlThreshold), 1);
+    const offResistance = offLeakage > 0 ? Math.max(leakageReference / offLeakage, onResistance * 10) : fallbackOff;
+    return isClosed ? onResistance : offResistance;
+  }
+
+  return fallbackOff;
 };
 
 const constraintViolations = (value: ValueMetadata): string[] => {
@@ -411,15 +495,9 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             description: `${component.id} known voltage on ${selfNode}`
           });
         }
-      } else if (component.catalogTypeId === 'diode') {
-        const vd = component.forwardDrop.value ?? 0.7;
-        const ron = component.onResistance.value ?? 10;
-        const roff = component.offResistance.value ?? 1e6;
-        const fromKnown = getKnownVoltage(component.from) ?? 0;
-        const toKnown = getKnownVoltage(component.to) ?? 0;
-        const on = fromKnown - toKnown >= vd;
-        const resistance = on ? ron : roff;
-        if (resistance !== 0) {
+      } else if (component.kind === 'switch') {
+        const resistance = getSwitchEquivalentResistance(component, knownNodeVoltages, diagnostics);
+        if (resistance > 0) {
           const conductance = 1 / resistance;
           const isFrom = component.from === nodeId;
           const isTo = component.to === nodeId;
@@ -428,27 +506,6 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             addCoefficient(row, `V:${component.from}`, sign * conductance);
             addCoefficient(row, `V:${component.to}`, -sign * conductance);
           }
-        }
-      } else if (component.catalogTypeId === 'bjt') {
-        const beta = component.beta.value ?? 100;
-        const rb = 1000 / Math.max(beta, 1e-9);
-        const conductance = 1 / rb;
-        const isFrom = component.from === nodeId;
-        const isTo = component.to === nodeId;
-        if (isFrom || isTo) {
-          const sign = isFrom ? 1 : -1;
-          addCoefficient(row, `V:${component.from}`, sign * conductance);
-          addCoefficient(row, `V:${component.to}`, -sign * conductance);
-        }
-      } else if (component.catalogTypeId === 'mosfet') {
-        const r = component.onResistance.value ?? 5;
-        const g = r === 0 ? 1e9 : 1 / r;
-        const isFrom = component.from === nodeId;
-        const isTo = component.to === nodeId;
-        if (isFrom || isTo) {
-          const sign = isFrom ? 1 : -1;
-          addCoefficient(row, `V:${component.from}`, sign * g);
-          addCoefficient(row, `V:${component.to}`, -sign * g);
         }
       } else if (component.catalogTypeId === 'op-amp') {
         const gain = component.gain.value ?? 1e5;
@@ -764,18 +821,8 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       );
     }
 
-    if (component.catalogTypeId === 'diode') {
-      const r = Math.max(component.onResistance.value ?? 10, 1e-6);
-      values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
-    }
-
-    if (component.catalogTypeId === 'bjt') {
-      const r = Math.max(1000 / Math.max(component.beta.value ?? 100, 1e-6), 1e-6);
-      values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
-    }
-
-    if (component.catalogTypeId === 'mosfet') {
-      const r = Math.max(component.onResistance.value ?? 5, 1e-6);
+    if (component.kind === 'switch') {
+      const r = Math.max(getSwitchEquivalentResistance(component, new Map(), diagnostics), 1e-12);
       values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
     }
 

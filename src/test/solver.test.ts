@@ -110,6 +110,92 @@ describe('solveCircuit', () => {
     expect(first.monteCarlo?.targetDistributions[key]?.stats.std).toBeGreaterThan(0);
   });
 
+
+
+  it('models shared switch open/closed transitions from control threshold and hysteresis', () => {
+    const circuit: CircuitState = {
+      nodes: [
+        { id: 'gnd', reference: true },
+        { id: 'vin' },
+        { id: 'n1' }
+      ],
+      components: [
+        {
+          id: 'vs1',
+          kind: 'source2p',
+          catalogTypeId: 'voltage-source',
+          from: 'vin',
+          to: 'gnd',
+          voltage: { value: 10, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'sw1',
+          kind: 'switch',
+          catalogTypeId: 'switch-spst',
+          from: 'vin',
+          to: 'n1',
+          onResistance: { value: 0.01, known: true, computed: false, unit: 'Ω' },
+          offLeakageCurrent: { value: 0.000001, known: true, computed: false, unit: 'A' },
+          controlThreshold: { value: 2, known: true, computed: false, unit: 'V' },
+          hysteresis: { value: 1, known: true, computed: false, unit: 'V' },
+          controlSignal: { value: 3, known: true, computed: false, unit: 'V' },
+          state: 'open'
+        },
+        {
+          id: 'rload',
+          kind: 'passive2p',
+          catalogTypeId: 'resistor',
+          from: 'n1',
+          to: 'gnd',
+          resistance: { value: 1000, known: true, computed: false, unit: 'Ω', constraints: { nonZero: true } }
+        }
+      ]
+    };
+
+    const closedResult = solveCircuit(circuit);
+    expect(closedResult.values['node:n1:voltage']?.value ?? 0).toBeGreaterThan(9.9);
+
+    const openResult = solveCircuit({
+      ...circuit,
+      components: circuit.components.map((component) => {
+        if (component.id === 'sw1' && component.catalogTypeId === 'switch-spst') {
+          return { ...component, controlSignal: { value: 0, known: true, computed: false, unit: 'V' as const }, state: 'open' as const };
+        }
+        return component;
+      })
+    });
+
+    expect(openResult.values['node:n1:voltage']?.value ?? 1).toBeLessThan(0.1);
+  });
+
+  it('adds fallback diagnostics for invalid near-ideal switch configuration', () => {
+    const circuit: CircuitState = {
+      nodes: [
+        { id: 'gnd', reference: true },
+        { id: 'n1' }
+      ],
+      components: [
+        {
+          id: 'swbad',
+          kind: 'switch',
+          catalogTypeId: 'relay-ssr',
+          from: 'n1',
+          to: 'gnd',
+          onResistance: { value: 0, known: true, computed: false, unit: 'Ω' },
+          offLeakageCurrent: { value: 0, known: true, computed: false, unit: 'A' },
+          controlThreshold: { value: 0, known: true, computed: false, unit: 'V' },
+          hysteresis: { value: 0, known: true, computed: false, unit: 'V' },
+          controlSignal: { value: 5, known: true, computed: false, unit: 'V' },
+          state: 'closed'
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'switch_fallback_applied')).toBe(true);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'unsupported_component_behavior')).toBe(true);
+  });
+
   it('emits diagnostics for invalid tolerance/tempco metadata', () => {
     const circuit: CircuitState = {
       nodes: [{ id: 'gnd', reference: true }],

@@ -40,6 +40,12 @@ export type ComponentCatalogTypeId =
   | 'diode'
   | 'bjt'
   | 'mosfet'
+  | 'switch-spst'
+  | 'switch-spdt'
+  | 'switch-dpdt'
+  | 'relay-reed'
+  | 'relay-ssr'
+  | 'switch-analog'
   | 'op-amp'
   | 'logic-gate'
   | 'wire';
@@ -145,6 +151,20 @@ export type MosfetComponent = ComponentBase & {
   catalogTypeId: 'mosfet';
   thresholdVoltage: ValueMetadata;
   onResistance: ValueMetadata;
+  offLeakageCurrent: ValueMetadata;
+  hysteresis?: ValueMetadata;
+  controlSignal?: ValueMetadata;
+};
+
+export type ControlledSwitchComponent = ComponentBase & {
+  kind: 'switch';
+  catalogTypeId: 'switch-spst' | 'switch-spdt' | 'switch-dpdt' | 'relay-reed' | 'relay-ssr' | 'switch-analog';
+  onResistance: ValueMetadata;
+  offLeakageCurrent: ValueMetadata;
+  controlThreshold: ValueMetadata;
+  hysteresis?: ValueMetadata;
+  controlSignal?: ValueMetadata;
+  state?: 'open' | 'closed';
 };
 
 export type OpAmpComponent = ComponentBase & {
@@ -177,6 +197,7 @@ export type CircuitComponent =
   | DiodeComponent
   | BjtComponent
   | MosfetComponent
+  | ControlledSwitchComponent
   | OpAmpComponent
   | LogicGateComponent
   | WireComponent;
@@ -215,7 +236,8 @@ export type SolverDiagnostic = {
     | 'target_unsolvable'
     | 'target_non_unique'
     | 'target_not_found'
-    | 'unsupported_analysis_mode';
+    | 'unsupported_analysis_mode'
+    | 'switch_fallback_applied';
   severity: DiagnosticSeverity;
   message: string;
   componentId?: string;
