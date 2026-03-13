@@ -8,11 +8,21 @@ import type { ComponentCatalogItem } from '../../data/componentCatalog';
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
 });
+
+
+const selectMultipleValues = (element: HTMLElement, values: string[]) => {
+  const select = element as HTMLSelectElement;
+  for (const option of Array.from(select.options)) {
+    option.selected = values.includes(option.value);
+  }
+  fireEvent.change(select);
+};
 
 describe('ComponentLibrarySidebar', () => {
   it('filters by aliases and persists nested accordion state', () => {
@@ -25,6 +35,7 @@ describe('ComponentLibrarySidebar', () => {
     expect(screen.queryByText('Resistor')).toBeNull();
 
     unmount();
+    window.sessionStorage.clear();
     render(<ComponentLibrarySidebar shortcutLabel={(id) => id} />);
     expect(screen.getByRole('button', { name: /Passive3/i }).getAttribute('aria-expanded')).toBe('false');
 
@@ -41,6 +52,57 @@ describe('ComponentLibrarySidebar', () => {
     expect(screen.getByRole('button', { name: /ICs1/i }).getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('button', { name: /Timers1/i }).getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByText('Timer IC (NE555)')).toBeTruthy();
+  });
+
+
+
+  it('supports combined multi-filter selection and quick toggles', () => {
+    render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
+
+    selectMultipleValues(screen.getByLabelText('Category filter'), ['ics']);
+    selectMultipleValues(screen.getByLabelText('Subcategory filter'), ['ics::logic-74xx-hc-hct']);
+    selectMultipleValues(screen.getByLabelText('Tags filter'), ['digital']);
+    selectMultipleValues(screen.getByLabelText('Pin count filter'), ['14']);
+    selectMultipleValues(screen.getByLabelText('Manufacturer filter'), ['Nexperia']);
+
+    expect(screen.getByText('Quad NAND (74HC00)')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+    fireEvent.click(screen.getByLabelText(/fully simulated only/i));
+    expect(screen.queryByText('Quad NAND (74HC00)')).toBeNull();
+    expect(screen.getByText('Resistor')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+    fireEvent.click(screen.getByLabelText(/new components/i));
+    expect(screen.getByText('Dual Op-Amp (LM358)')).toBeTruthy();
+    expect(screen.queryByText('Resistor')).toBeNull();
+  });
+
+  it('persists filter state in session storage and restores it on remount', () => {
+    const { unmount } = render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'nand' } });
+    fireEvent.click(screen.getByLabelText(/new components/i));
+
+    unmount();
+    render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
+
+    expect((screen.getByPlaceholderText(/name, alias, tag, part/i) as HTMLInputElement).value).toBe('nand');
+    expect((screen.getByLabelText(/new components/i) as HTMLInputElement).checked).toBe(true);
+
+    const persisted = JSON.parse(window.sessionStorage.getItem('circuit-workbench-component-library-session-v1') ?? '{}');
+    expect(persisted.query).toBe('nand');
+    expect(persisted.filters.newComponentsOnly).toBe(true);
+  });
+
+  it('renders empty results when filters are mutually exclusive', () => {
+    render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
+
+    selectMultipleValues(screen.getByLabelText('Category filter'), ['passive']);
+    selectMultipleValues(screen.getByLabelText('Manufacturer filter'), ['Nexperia']);
+
+    expect(screen.getByText('0 matching components')).toBeTruthy();
+    expect(screen.queryByText('Resistor')).toBeNull();
   });
 
   it('keeps drag data type compatible with canvas drop handler', () => {
@@ -168,7 +230,16 @@ describe('componentCatalog sidebar grouping', () => {
     const perfStart = performance.now();
     const filtered = __componentLibraryPerf.filterComponentCatalog(
       largeCatalog,
-      __componentLibraryPerf.tokenizeQuery('bench-item-4321 odd')
+      __componentLibraryPerf.tokenizeQuery('bench-item-4321 odd'),
+      {
+        categories: [],
+        subcategories: [],
+        tags: [],
+        pinCounts: [],
+        manufacturers: [],
+        fullySimulatedOnly: false,
+        newComponentsOnly: false
+      }
     );
     const perfDuration = performance.now() - perfStart;
 

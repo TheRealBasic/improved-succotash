@@ -11,6 +11,12 @@ export type ComponentCatalogEntry = {
   label: string;
   aliases: string[];
   tags: string[];
+  categoryId: string;
+  subcategoryId: string;
+  pinCount: number;
+  manufacturer?: string;
+  fullySimulated: boolean;
+  isNew: boolean;
   partNumber?: string;
   shortcutId?: string;
   searchTokens: string[];
@@ -106,6 +112,12 @@ export const buildComponentCatalog = (items: ComponentCatalogItem[]): ComponentC
         label: item.displayName,
         aliases,
         tags: item.tags,
+        categoryId: sidebarPath.categoryId,
+        subcategoryId: `${sidebarPath.categoryId}::${sidebarPath.subcategoryId}`,
+        pinCount: item.pinCount,
+        manufacturer: item.manufacturer,
+        fullySimulated: item.tags.includes('fully-simulated'),
+        isNew: item.tags.includes('new'),
         partNumber: item.partNumber,
         shortcutId: item.metadata?.shortcut ? item.metadata.shortcut.id ?? `place-${item.id}` : undefined,
         searchTokens: indexedSearchTokens(item, aliases)

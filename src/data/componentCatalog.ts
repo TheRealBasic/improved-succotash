@@ -192,7 +192,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'passive',
     subcategory: 'generic',
     description: 'Generic two-terminal resistor symbol.',
-    tags: ['symbol', 'ohmic', 'generic'],
+    tags: ['symbol', 'ohmic', 'generic', 'fully-simulated'],
     pinCount: 2,
     editablePropertySchema: {
       resistance: { type: 'number', label: 'Resistance', unit: 'Ω', min: 0.001 }
@@ -212,7 +212,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'passive',
     subcategory: 'generic',
     description: 'Generic capacitor symbol for charge storage.',
-    tags: ['symbol', 'energy-storage', 'generic'],
+    tags: ['symbol', 'energy-storage', 'generic', 'fully-simulated'],
     pinCount: 2,
     editablePropertySchema: {
       capacitance: { type: 'number', label: 'Capacitance', unit: 'F', min: 0 }
@@ -232,7 +232,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'passive',
     subcategory: 'generic',
     description: 'Generic inductor symbol for magnetic energy storage.',
-    tags: ['symbol', 'magnetic', 'generic'],
+    tags: ['symbol', 'magnetic', 'generic', 'fully-simulated'],
     pinCount: 2,
     editablePropertySchema: {
       inductance: { type: 'number', label: 'Inductance', unit: 'H', min: 0 }
@@ -252,7 +252,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'sources',
     subcategory: 'dc',
     description: 'Ideal two-terminal voltage source.',
-    tags: ['source', 'dc', 'generic'],
+    tags: ['source', 'dc', 'generic', 'fully-simulated'],
     pinCount: 2,
     editablePropertySchema: {
       voltage: { type: 'number', label: 'Voltage', unit: 'V' },
@@ -274,7 +274,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'sources',
     subcategory: 'dc',
     description: 'Ideal two-terminal current source.',
-    tags: ['source', 'bias', 'generic'],
+    tags: ['source', 'bias', 'generic', 'fully-simulated'],
     pinCount: 2,
     editablePropertySchema: {
       current: { type: 'number', label: 'Current', unit: 'A' },
@@ -412,7 +412,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'ics',
     subcategory: 'precision-analog',
     description: 'Dual operational amplifier suitable for single-supply designs.',
-    tags: ['ic', 'analog', 'amplifier'],
+    tags: ['ic', 'analog', 'amplifier', 'new'],
     pinCount: 8,
     defaultProps: { openLoopGain: 100000, channels: 2 },
     partNumber: 'LM358',
@@ -427,7 +427,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'interface',
     subcategory: 'logic-family',
     description: 'Quad 2-input NAND gate in HC CMOS family.',
-    tags: ['ic', 'digital', 'nand'],
+    tags: ['ic', 'digital', 'nand', 'new'],
     pinCount: 14,
     defaultProps: { family: 'HC', gates: 4 },
     partNumber: '74HC00',
@@ -442,7 +442,7 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'rf',
     subcategory: 'signal-synthesis',
     description: 'Direct digital synthesis IC for low-power waveform generation.',
-    tags: ['rf', 'dds', 'niche'],
+    tags: ['rf', 'dds', 'niche', 'new'],
     pinCount: 10,
     defaultProps: { maxFrequencyHz: 12500000 },
     partNumber: 'AD9833',
