@@ -1,4 +1,4 @@
-export type Unit = 'V' | 'A' | 'Ω' | 'F' | 'H' | 'Hz';
+export type Unit = 'V' | 'A' | 'Ω' | 'F' | 'H' | 'Hz' | 'ns';
 
 export type ValueConstraint = {
   min?: number;
@@ -52,9 +52,20 @@ export type ComponentCatalogTypeId =
   | 'generic-regulator-controller'
   | 'voltage-reference'
   | 'logic-gate'
+  | 'logic-buffer'
+  | 'logic-schmitt-trigger'
+  | 'logic-tri-state-buffer'
+  | 'logic-latch'
+  | 'logic-flip-flop'
+  | 'logic-counter'
+  | 'logic-multiplexer'
   | 'wire';
 
 export type LogicGateType = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor';
+
+export type DigitalAbstraction = 'combinational' | 'buffer' | 'schmitt-trigger' | 'tri-state-buffer' | 'latch' | 'flip-flop' | 'counter' | 'multiplexer';
+
+export type PullDefault = 'none' | 'pull-up' | 'pull-down';
 
 export type LogicLevelBridge = {
   highThreshold: ValueMetadata;
@@ -183,8 +194,12 @@ export type OpAmpComponent = ComponentBase & {
 
 export type LogicGateComponent = ComponentBase & {
   kind: 'digital';
-  catalogTypeId: 'logic-gate';
+  catalogTypeId: 'logic-gate' | 'logic-buffer' | 'logic-schmitt-trigger' | 'logic-tri-state-buffer' | 'logic-latch' | 'logic-flip-flop' | 'logic-counter' | 'logic-multiplexer';
   gateType: LogicGateType;
+  digitalAbstraction?: DigitalAbstraction;
+  logicFamily?: string;
+  propagationDelayNs?: ValueMetadata;
+  pullDefault?: PullDefault;
   bridge: LogicLevelBridge;
 };
 
@@ -243,6 +258,7 @@ export type SolverDiagnostic = {
     | 'target_non_unique'
     | 'target_not_found'
     | 'unsupported_analysis_mode'
+    | 'unsupported_digital_timing'
     | 'switch_fallback_applied';
   severity: DiagnosticSeverity;
   message: string;

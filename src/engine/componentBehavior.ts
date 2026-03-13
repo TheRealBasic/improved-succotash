@@ -95,6 +95,13 @@ export const getBehaviorFamilyForCatalogType = (catalogTypeId: ComponentCatalogT
     case 'voltage-reference':
       return 'amplifier';
     case 'logic-gate':
+    case 'logic-buffer':
+    case 'logic-schmitt-trigger':
+    case 'logic-tri-state-buffer':
+    case 'logic-latch':
+    case 'logic-flip-flop':
+    case 'logic-counter':
+    case 'logic-multiplexer':
       return 'digital';
   }
 };
@@ -135,7 +142,14 @@ const catalogCapabilityRegistry: Partial<Record<ComponentCatalogTypeId, Partial<
   'instrumentation-amplifier': { ac: false, transient: false, monteCarlo: false },
   'generic-regulator-controller': { ac: false, transient: false, monteCarlo: false },
   'voltage-reference': { ac: false, transient: false, monteCarlo: false },
-  'logic-gate': { ac: false, transient: false, monteCarlo: false }
+  'logic-gate': { ac: false, transient: false, monteCarlo: false },
+  'logic-buffer': { ac: false, transient: false, monteCarlo: false },
+  'logic-schmitt-trigger': { ac: false, transient: false, monteCarlo: false },
+  'logic-tri-state-buffer': { ac: false, transient: false, monteCarlo: false },
+  'logic-latch': { ac: false, transient: false, monteCarlo: false },
+  'logic-flip-flop': { ac: false, transient: false, monteCarlo: false },
+  'logic-counter': { ac: false, transient: false, monteCarlo: false },
+  'logic-multiplexer': { ac: false, transient: false, monteCarlo: false }
 };
 
 export const getComponentCapabilities = (component: CircuitComponent): CapabilityMap => {
@@ -158,8 +172,8 @@ const capabilityActionByType: Record<AnalysisCapability, string> = {
 export const getUnsupportedComponentDiagnostics = (
   circuit: CircuitState,
   analysisType: AnalysisCapability
-): SolverDiagnostic[] =>
-  circuit.components
+): SolverDiagnostic[] => {
+  const unsupportedAnalysis = circuit.components
     .filter((component) => !getComponentCapabilities(component)[analysisType])
     .map((component) => {
       const family = getBehaviorFamilyForCatalogType(component.catalogTypeId);
@@ -173,6 +187,21 @@ export const getUnsupportedComponentDiagnostics = (
         message: `Component ${component.id} (${component.catalogTypeId}/${family}) is not supported by ${analysisType.toUpperCase()} analysis. ${capabilityActionByType[analysisType]} ${macroModelNote}`.trim()
       };
     });
+
+  const unsupportedTiming = analysisType === 'transient'
+    ? circuit.components
+      .filter((component) => component.kind === 'digital')
+      .filter((component) => (component.propagationDelayNs?.value ?? 0) > 0 || ['logic-tri-state-buffer', 'logic-latch', 'logic-flip-flop', 'logic-counter', 'logic-multiplexer'].includes(component.catalogTypeId))
+      .map((component) => ({
+        code: 'unsupported_digital_timing' as const,
+        severity: 'warning' as const,
+        componentId: component.id,
+        message: `Component ${component.id} (${component.catalogTypeId}) uses timing/edge behavior (delay, edge-triggering, or hi-z) that is not modeled in transient mode. Configure as static threshold abstraction or interpret waveform as DC-equivalent.`
+      }))
+    : [];
+
+  return [...unsupportedAnalysis, ...unsupportedTiming];
+};
 
 export const filterCircuitByCapability = (circuit: CircuitState, analysisType: AnalysisCapability): CircuitState => ({
   ...circuit,
