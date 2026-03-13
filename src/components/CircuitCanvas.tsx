@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type DragEvent, type PointerEvent } from 'react';
 import type { ComponentCatalogTypeId, ComponentKind } from '../engine/model';
 import { ANIMATION_CLASS, ANIMATION_MS } from '../styles/animations';
+import { renderComponentSymbol } from './symbolRendering';
 
 export type CanvasNodePosition = {
   id: string;
@@ -117,27 +118,6 @@ const buildOrthogonalRoute = (start: Point, end: Point, blocked: Rect[]): Point[
   return path.reverse();
 };
 
-
-const renderComponentSymbol = (component: CanvasComponent, fromNode: CanvasNodePosition, toNode: CanvasNodePosition) => {
-  const midX = (fromNode.x + toNode.x) / 2;
-  const midY = (fromNode.y + toNode.y) / 2;
-  if (component.catalogTypeId === 'diode') {
-    return <>
-      <polygon points={`${midX - 10},${midY - 10} ${midX - 10},${midY + 10} ${midX + 4},${midY}`} fill="none" stroke="#ffd36d" strokeWidth={2} />
-      <line x1={midX + 6} y1={midY - 10} x2={midX + 6} y2={midY + 10} stroke="#ffd36d" strokeWidth={2} />
-    </>;
-  }
-  if (component.catalogTypeId === 'op-amp') {
-    return <polygon points={`${midX - 12},${midY - 14} ${midX - 12},${midY + 14} ${midX + 14},${midY}`} fill="none" stroke="#9ae6ff" strokeWidth={2} />;
-  }
-  if (component.catalogTypeId === 'logic-gate') {
-    return <rect x={midX - 12} y={midY - 10} width={24} height={20} fill="none" stroke="#9dffcc" strokeWidth={2} rx={4} />;
-  }
-  if (component.catalogTypeId === 'bjt' || component.catalogTypeId === 'mosfet') {
-    return <circle cx={midX} cy={midY} r={10} fill="none" stroke="#ffb4f3" strokeWidth={2} />;
-  }
-  return null;
-};
 
 export const CircuitCanvas = ({
   nodes,
