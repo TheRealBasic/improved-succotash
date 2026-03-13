@@ -59,7 +59,7 @@ export const COMPONENT_CIRCUIT_FIXTURES: ComponentCircuitFixture[] = [
       nodes: [...baseNodes],
       components: [
         { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
-        { id: 'm1', kind: 'switch', catalogTypeId: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 5, known: true, computed: false, unit: 'Ω' } }
+        { id: 'm1', kind: 'switch', catalogTypeId: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 5, known: true, computed: false, unit: 'Ω' }, offLeakageCurrent: { value: 0.000001, known: true, computed: false, unit: 'A' }, hysteresis: { value: 0.05, known: true, computed: false, unit: 'V' }, controlSignal: { value: 3, known: true, computed: false, unit: 'V' } }
       ]
     },
     expectations: { valueKeys: ['component:m1:current'] }

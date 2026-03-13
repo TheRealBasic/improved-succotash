@@ -10,6 +10,37 @@ export const assertNever = (value: never, message: string): never => {
   throw new Error(`${message}: ${String(value)}`);
 };
 
+
+export type SharedSwitchBehaviorModel = {
+  onResistancePath: string;
+  offLeakagePath: string;
+  controlThresholdPath: string;
+  hysteresisPath?: string;
+  controlSignalPath?: string;
+  statePath?: string;
+};
+
+export const SHARED_SWITCH_BEHAVIOR_MODEL: SharedSwitchBehaviorModel = {
+  onResistancePath: 'onResistance',
+  offLeakagePath: 'offLeakageCurrent',
+  controlThresholdPath: 'controlThreshold',
+  hysteresisPath: 'hysteresis',
+  controlSignalPath: 'controlSignal',
+  statePath: 'state'
+};
+
+const SHARED_SWITCH_CATALOG_TYPES: ComponentCatalogTypeId[] = [
+  'switch-spst',
+  'switch-spdt',
+  'switch-dpdt',
+  'relay-reed',
+  'relay-ssr',
+  'switch-analog'
+];
+
+export const usesSharedSwitchBehavior = (catalogTypeId: ComponentCatalogTypeId): boolean =>
+  SHARED_SWITCH_CATALOG_TYPES.includes(catalogTypeId);
+
 export type AnalysisCapability = 'dc' | 'ac' | 'transient' | 'monteCarlo';
 
 type CapabilityMap = Record<AnalysisCapability, boolean>;
@@ -50,6 +81,12 @@ export const getBehaviorFamilyForCatalogType = (catalogTypeId: ComponentCatalogT
     case 'diode':
     case 'bjt':
     case 'mosfet':
+    case 'switch-spst':
+    case 'switch-spdt':
+    case 'switch-dpdt':
+    case 'relay-reed':
+    case 'relay-ssr':
+    case 'switch-analog':
       return 'switch';
     case 'op-amp':
       return 'amplifier';
@@ -83,6 +120,12 @@ const catalogCapabilityRegistry: Partial<Record<ComponentCatalogTypeId, Partial<
   diode: { ac: false, transient: false, monteCarlo: false },
   bjt: { ac: false, transient: false, monteCarlo: false },
   mosfet: { ac: false, transient: false, monteCarlo: false },
+  'switch-spst': { ac: false, transient: false, monteCarlo: false },
+  'switch-spdt': { ac: false, transient: false, monteCarlo: false },
+  'switch-dpdt': { ac: false, transient: false, monteCarlo: false },
+  'relay-reed': { ac: false, transient: false, monteCarlo: false },
+  'relay-ssr': { ac: false, transient: false, monteCarlo: false },
+  'switch-analog': { ac: false, transient: false, monteCarlo: false },
   'op-amp': { ac: false, transient: false, monteCarlo: false },
   'logic-gate': { ac: false, transient: false, monteCarlo: false }
 };
