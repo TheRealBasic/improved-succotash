@@ -40,6 +40,56 @@ export const COMPONENT_CIRCUIT_FIXTURES: ComponentCircuitFixture[] = [
     },
     expectations: { valueKeys: ['component:d1:current'] }
   },
+
+  {
+    name: 'diode-schottky-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 3.3, known: true, computed: false, unit: 'V' } },
+        { id: 'd-schottky', kind: 'switch', catalogTypeId: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.32, known: true, computed: false, unit: 'V' }, onResistance: { value: 8, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 8e5, known: true, computed: false, unit: 'Ω' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:d-schottky:current'] }
+  },
+  {
+    name: 'diode-led-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'd-led', kind: 'switch', catalogTypeId: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 2, known: true, computed: false, unit: 'V' }, onResistance: { value: 15, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 1e6, known: true, computed: false, unit: 'Ω' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:d-led:current'] }
+  },
+
+  {
+    name: 'diode-zener-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 9, known: true, computed: false, unit: 'V' } },
+        { id: 'd-zener', kind: 'switch', catalogTypeId: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.75, known: true, computed: false, unit: 'V' }, onResistance: { value: 12, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 1e6, known: true, computed: false, unit: 'Ω' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:d-zener:current'] }
+  },
+  {
+    name: 'diode-tvs-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 12, known: true, computed: false, unit: 'V' } },
+        { id: 'd-tvs', kind: 'switch', catalogTypeId: 'diode', from: 'n1', to: 'gnd', forwardDrop: { value: 0.85, known: true, computed: false, unit: 'V' }, onResistance: { value: 4, known: true, computed: false, unit: 'Ω' }, offResistance: { value: 5e5, known: true, computed: false, unit: 'Ω' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:d-tvs:current'] }
+  },
   {
     name: 'bjt-dc-path',
     family: 'active',
@@ -52,6 +102,30 @@ export const COMPONENT_CIRCUIT_FIXTURES: ComponentCircuitFixture[] = [
     },
     expectations: { valueKeys: ['component:q1:current'] }
   },
+
+  {
+    name: 'bjt-pnp-small-signal-diagnostic',
+    family: 'diagnostic',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'q-pnp', kind: 'switch', catalogTypeId: 'bjt', from: 'n1', to: 'gnd', beta: { known: true, computed: false, unit: 'A' }, vbeOn: { value: 0.7, known: true, computed: false, unit: 'V' } }
+      ]
+    },
+    expectations: { diagnosticCodes: ['missing_constitutive_value'] }
+  },
+  {
+    name: 'bjt-power-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 12, known: true, computed: false, unit: 'V' } },
+        { id: 'q-power', kind: 'switch', catalogTypeId: 'bjt', from: 'n1', to: 'gnd', beta: { value: 45, known: true, computed: false, unit: 'A' }, vbeOn: { value: 0.84, known: true, computed: false, unit: 'V' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:q-power:current'] }
+  },
   {
     name: 'mosfet-dc-path',
     family: 'active',
@@ -63,6 +137,31 @@ export const COMPONENT_CIRCUIT_FIXTURES: ComponentCircuitFixture[] = [
       ]
     },
     expectations: { valueKeys: ['component:m1:current'] }
+  },
+
+  {
+    name: 'mosfet-pmos-logic-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 5, known: true, computed: false, unit: 'V' } },
+        { id: 'm-pmos', kind: 'switch', catalogTypeId: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: -1.6, known: true, computed: false, unit: 'V' }, onResistance: { value: 0.07, known: true, computed: false, unit: 'Ω' }, offLeakageCurrent: { value: 0.0000015, known: true, computed: false, unit: 'A' }, hysteresis: { value: 0.04, known: true, computed: false, unit: 'V' }, controlSignal: { value: 0, known: true, computed: false, unit: 'V' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:m-pmos:current'] }
+  },
+  {
+    name: 'mosfet-power-dc-path',
+    family: 'active',
+    circuit: {
+      nodes: [...baseNodes],
+      components: [
+        { id: 'vs', kind: 'source2p', catalogTypeId: 'voltage-source', from: 'n1', to: 'gnd', voltage: { value: 10, known: true, computed: false, unit: 'V' } },
+        { id: 'm-power', kind: 'switch', catalogTypeId: 'mosfet', from: 'n1', to: 'gnd', thresholdVoltage: { value: 3, known: true, computed: false, unit: 'V' }, onResistance: { value: 0.007, known: true, computed: false, unit: 'Ω' }, offLeakageCurrent: { value: 0.00001, known: true, computed: false, unit: 'A' }, hysteresis: { value: 0.06, known: true, computed: false, unit: 'V' }, controlSignal: { value: 5, known: true, computed: false, unit: 'V' } }
+      ]
+    },
+    expectations: { valueKeys: ['component:m-power:current'] }
   },
   {
     name: 'op-amp-output-clamp',
