@@ -377,3 +377,42 @@ body {
   opacity: 0.85;
   margin-left: 0.4rem;
 }
+
+.library-filters {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid #2f447d;
+  border-radius: 8px;
+  padding: 0.55rem;
+  background: rgba(12, 18, 37, 0.6);
+}
+
+.library-filter-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.library-filter-grid label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.library-filter-grid select {
+  border: 1px solid #3553a3;
+  border-radius: 8px;
+  background: #0f1733;
+  color: #e6ecff;
+  min-height: 3.4rem;
+}
+
+.library-filter-toggles {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.library-filter-toggles label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}

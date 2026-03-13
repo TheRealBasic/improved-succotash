@@ -5,7 +5,33 @@ type ComponentLibrarySidebarProps = {
   shortcutLabel: (shortcutId: string) => string;
 };
 
+type ComponentLibraryFilters = {
+  categories: string[];
+  subcategories: string[];
+  tags: string[];
+  pinCounts: number[];
+  manufacturers: string[];
+  fullySimulatedOnly: boolean;
+  newComponentsOnly: boolean;
+};
+
+type PersistedSidebarSessionState = {
+  query: string;
+  filters: ComponentLibraryFilters;
+};
+
 const STORAGE_KEY = 'circuit-workbench-component-library-state-v1';
+const SESSION_STORAGE_KEY = 'circuit-workbench-component-library-session-v1';
+
+const defaultFilters = (): ComponentLibraryFilters => ({
+  categories: [],
+  subcategories: [],
+  tags: [],
+  pinCounts: [],
+  manufacturers: [],
+  fullySimulatedOnly: false,
+  newComponentsOnly: false
+});
 
 const normalize = (value: string): string => value.trim().toLowerCase();
 
@@ -21,12 +47,50 @@ const matchesQuery = (tokens: string[], searchTokens: string[]): boolean => {
 
 const getSubcategoryStorageKey = (categoryId: string, subcategoryId: string): string => `${categoryId}::${subcategoryId}`;
 
-const filterComponentCatalog = (catalog: ComponentCatalogCategory[], queryTokens: string[]): ComponentCatalogCategory[] =>
+const filterComponentCatalog = (
+  catalog: ComponentCatalogCategory[],
+  queryTokens: string[],
+  filters: ComponentLibraryFilters
+): ComponentCatalogCategory[] =>
   catalog.map((category) => ({
     ...category,
     subcategories: category.subcategories.map((subcategory) => ({
       ...subcategory,
-      entries: subcategory.entries.filter((entry) => matchesQuery(queryTokens, entry.searchTokens))
+      entries: subcategory.entries.filter((entry) => {
+        if (!matchesQuery(queryTokens, entry.searchTokens)) {
+          return false;
+        }
+
+        if (filters.categories.length > 0 && !filters.categories.includes(entry.categoryId)) {
+          return false;
+        }
+
+        if (filters.subcategories.length > 0 && !filters.subcategories.includes(entry.subcategoryId)) {
+          return false;
+        }
+
+        if (filters.tags.length > 0 && !filters.tags.some((tag) => entry.tags.includes(tag))) {
+          return false;
+        }
+
+        if (filters.pinCounts.length > 0 && !filters.pinCounts.includes(entry.pinCount)) {
+          return false;
+        }
+
+        if (filters.manufacturers.length > 0 && !filters.manufacturers.includes(entry.manufacturer ?? 'Unknown')) {
+          return false;
+        }
+
+        if (filters.fullySimulatedOnly && !entry.fullySimulated) {
+          return false;
+        }
+
+        if (filters.newComponentsOnly && !entry.isNew) {
+          return false;
+        }
+
+        return true;
+      })
     }))
   }));
 
@@ -51,6 +115,7 @@ const EntryButton = ({ entry, shortcutLabel }: { entry: ComponentCatalogEntry; s
 
 export const ComponentLibrarySidebar = ({ shortcutLabel }: ComponentLibrarySidebarProps) => {
   const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<ComponentLibraryFilters>(defaultFilters);
   const [virtualOffsetsBySubcategory, setVirtualOffsetsBySubcategory] = useState<Record<string, number>>({});
   const [expandedBySection, setExpandedBySection] = useState<Record<string, boolean>>(() => {
     const initial = Object.fromEntries(COMPONENT_CATALOG.map((category) => [category.id, true]));
@@ -80,16 +145,58 @@ export const ComponentLibrarySidebar = ({ shortcutLabel }: ComponentLibrarySideb
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedBySection));
   }, [expandedBySection]);
 
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<PersistedSidebarSessionState>;
+      setQuery(parsed.query ?? '');
+      setFilters((current) => ({ ...current, ...parsed.filters }));
+    } catch {
+      // ignore malformed sessionStorage payload
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload: PersistedSidebarSessionState = { query, filters };
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+  }, [filters, query]);
+
   const normalizedQuery = normalize(query);
   const queryTokens = useMemo(() => tokenizeQuery(query), [query]);
 
-  const filteredCategories = useMemo(
-    () => filterComponentCatalog(COMPONENT_CATALOG, queryTokens),
-    [queryTokens]
-  );
+  const filterOptions = useMemo(() => {
+    const entries = COMPONENT_CATALOG.flatMap((category) => category.subcategories.flatMap((subcategory) => subcategory.entries));
+    return {
+      categories: COMPONENT_CATALOG.map((category) => ({ id: category.id, label: category.label })),
+      subcategories: COMPONENT_CATALOG.flatMap((category) =>
+        category.subcategories.map((subcategory) => ({ id: subcategory.id, label: subcategory.label }))
+      ),
+      tags: Array.from(new Set(entries.flatMap((entry) => entry.tags))).sort((left, right) => left.localeCompare(right)),
+      pinCounts: Array.from(new Set(entries.map((entry) => entry.pinCount))).sort((left, right) => left - right),
+      manufacturers: Array.from(new Set(entries.map((entry) => entry.manufacturer ?? 'Unknown'))).sort((left, right) =>
+        left.localeCompare(right)
+      )
+    };
+  }, []);
+
+  const filteredCategories = useMemo(() => filterComponentCatalog(COMPONENT_CATALOG, queryTokens, filters), [filters, queryTokens]);
 
   useEffect(() => {
-    if (!normalizedQuery) {
+    const hasActiveSearch =
+      normalizedQuery.length > 0 ||
+      filters.categories.length > 0 ||
+      filters.subcategories.length > 0 ||
+      filters.tags.length > 0 ||
+      filters.pinCounts.length > 0 ||
+      filters.manufacturers.length > 0 ||
+      filters.fullySimulatedOnly ||
+      filters.newComponentsOnly;
+
+    if (!hasActiveSearch) {
       return;
     }
 
@@ -108,7 +215,7 @@ export const ComponentLibrarySidebar = ({ shortcutLabel }: ComponentLibrarySideb
       }
       return next;
     });
-  }, [filteredCategories, normalizedQuery]);
+  }, [filteredCategories, filters, normalizedQuery]);
 
   const totalMatches = useMemo(
     () =>
@@ -118,6 +225,17 @@ export const ComponentLibrarySidebar = ({ shortcutLabel }: ComponentLibrarySideb
       ),
     [filteredCategories]
   );
+
+  const hasActiveFilters =
+    filters.categories.length > 0 ||
+    filters.subcategories.length > 0 ||
+    filters.tags.length > 0 ||
+    filters.pinCounts.length > 0 ||
+    filters.manufacturers.length > 0 ||
+    filters.fullySimulatedOnly ||
+    filters.newComponentsOnly;
+
+  const canUseVirtualization = queryTokens.length === 0 && !hasActiveFilters;
 
   return (
     <div className="sidebar-section component-library">
@@ -131,6 +249,144 @@ export const ComponentLibrarySidebar = ({ shortcutLabel }: ComponentLibrarySideb
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
+
+      <section className="library-filters" aria-label="Component filters">
+        <div className="library-filter-grid">
+          <label>
+            Category
+            <select
+              aria-label="Category filter"
+              multiple
+              value={filters.categories}
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
+                setFilters((current) => ({ ...current, categories: selected }));
+              }}
+            >
+              {filterOptions.categories.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Subcategory
+            <select
+              aria-label="Subcategory filter"
+              multiple
+              value={filters.subcategories}
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
+                setFilters((current) => ({ ...current, subcategories: selected }));
+              }}
+            >
+              {filterOptions.subcategories.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Tags
+            <select
+              aria-label="Tags filter"
+              multiple
+              value={filters.tags}
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
+                setFilters((current) => ({ ...current, tags: selected }));
+              }}
+            >
+              {filterOptions.tags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Pin count
+            <select
+              aria-label="Pin count filter"
+              multiple
+              value={filters.pinCounts.map(String)}
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.selectedOptions).map((option) => Number(option.value));
+                setFilters((current) => ({ ...current, pinCounts: selected }));
+              }}
+            >
+              {filterOptions.pinCounts.map((pinCount) => (
+                <option key={pinCount} value={pinCount}>
+                  {pinCount}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Manufacturer
+            <select
+              aria-label="Manufacturer filter"
+              multiple
+              value={filters.manufacturers}
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
+                setFilters((current) => ({ ...current, manufacturers: selected }));
+              }}
+            >
+              {filterOptions.manufacturers.map((manufacturer) => (
+                <option key={manufacturer} value={manufacturer}>
+                  {manufacturer}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="library-filter-toggles">
+          <label>
+            <input
+              type="checkbox"
+              checked={filters.fullySimulatedOnly}
+              onChange={() =>
+                setFilters((current) => ({
+                  ...current,
+                  fullySimulatedOnly: !current.fullySimulatedOnly
+                }))
+              }
+            />
+            Fully simulated only
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={filters.newComponentsOnly}
+              onChange={() =>
+                setFilters((current) => ({
+                  ...current,
+                  newComponentsOnly: !current.newComponentsOnly
+                }))
+              }
+            />
+            New components
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('');
+              setFilters(defaultFilters());
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      </section>
+
       <p className="hint">{totalMatches} matching component{totalMatches === 1 ? '' : 's'}</p>
 
       <div className="library-categories">
@@ -176,7 +432,7 @@ export const ComponentLibrarySidebar = ({ shortcutLabel }: ComponentLibrarySideb
                         {subcategoryExpanded && (
                           <div id={`library-subcategory-${subcategory.id}`} className="inventory-grid">
                             {subcategory.entries.length > 0 ? (
-                              queryTokens.length === 0 && subcategory.entries.length > VIRTUALIZATION_THRESHOLD ? (
+                              canUseVirtualization && subcategory.entries.length > VIRTUALIZATION_THRESHOLD ? (
                                 <VirtualizedEntryGrid
                                   subcategoryId={subcategory.id}
                                   entries={subcategory.entries}
