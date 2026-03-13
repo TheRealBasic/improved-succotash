@@ -213,6 +213,27 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "rendererId": "line-only",
   },
   {
+    "category": "sources",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "voltage-reference",
+    "kind": "voltage-reference",
+    "pinCount": 5,
+    "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "diode-led",
+    "kind": "diode",
+    "pinCount": 2,
+    "rendererId": "diode",
+  },
+  {
     "category": "semiconductors",
     "expectedPinCounts": [
       2,
@@ -221,6 +242,46 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "kind": "diode",
     "pinCount": 2,
     "rendererId": "diode",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "diode-schottky",
+    "kind": "diode",
+    "pinCount": 2,
+    "rendererId": "diode",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "diode-tvs",
+    "kind": "diode",
+    "pinCount": 2,
+    "rendererId": "diode",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "diode-zener",
+    "kind": "diode",
+    "pinCount": 2,
+    "rendererId": "diode",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "bjt-npn-power",
+    "kind": "bjt",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
   },
   {
     "category": "semiconductors",
@@ -237,7 +298,57 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "expectedPinCounts": [
       3,
     ],
+    "id": "bjt-pnp-power",
+    "kind": "bjt",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "bjt-pnp-small-signal",
+    "kind": "bjt",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
     "id": "mosfet",
+    "kind": "mosfet",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "mosfet-nmos-power",
+    "kind": "mosfet",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "mosfet-pmos-logic",
+    "kind": "mosfet",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "mosfet-pmos-power",
     "kind": "mosfet",
     "pinCount": 3,
     "rendererId": "transistor-circle",
@@ -262,6 +373,28 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     ],
     "id": "op-amp",
     "kind": "op-amp",
+    "pinCount": 5,
+    "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "ics",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "comparator",
+    "kind": "comparator",
+    "pinCount": 5,
+    "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "ics",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "instrumentation-amplifier",
+    "kind": "instrumentation-amplifier",
     "pinCount": 5,
     "rendererId": "op-amp-triangle",
   },
@@ -315,6 +448,17 @@ exports[`component symbol catalog validation > tracks an inventory of rendered s
     "kind": "current-regulator",
     "pinCount": 2,
     "rendererId": "line-only",
+  },
+  {
+    "category": "power",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "generic-regulator-controller",
+    "kind": "generic-regulator-controller",
+    "pinCount": 5,
+    "rendererId": "op-amp-triangle",
   },
   {
     "category": "power",

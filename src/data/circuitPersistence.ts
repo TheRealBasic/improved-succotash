@@ -41,6 +41,10 @@ const getCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefined =>
     case 'relay-ssr':
     case 'switch-analog':
     case 'op-amp':
+    case 'comparator':
+    case 'instrumentation-amplifier':
+    case 'generic-regulator-controller':
+    case 'voltage-reference':
     case 'logic-gate':
     case 'wire':
       return value;
@@ -61,7 +65,15 @@ const normalizeCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefi
         ? 'current-source'
         : value === 'opAmp'
           ? 'op-amp'
-          : value === 'logicGate'
+          : value === 'comparator'
+            ? 'comparator'
+            : value === 'instrumentationAmplifier'
+              ? 'instrumentation-amplifier'
+              : value === 'genericRegulatorController'
+                ? 'generic-regulator-controller'
+                : value === 'voltageReference'
+                  ? 'voltage-reference'
+                  : value === 'logicGate'
             ? 'logic-gate'
             : value;
 
@@ -231,6 +243,10 @@ const normalizeComponent = (component: unknown): CircuitComponent | undefined =>
         state: (asString(record.state) as 'open' | 'closed' | undefined) ?? 'open'
       };
     case 'op-amp':
+    case 'comparator':
+    case 'instrumentation-amplifier':
+    case 'generic-regulator-controller':
+    case 'voltage-reference':
       return {
         id,
         from,
@@ -240,7 +256,9 @@ const normalizeComponent = (component: unknown): CircuitComponent | undefined =>
         label: asString(record.label) ?? `U-${id}`,
         gain: normalizeValueMetadata(record.gain, 'V', 100000),
         outputLimitHigh: normalizeValueMetadata(record.outputLimitHigh, 'V', 12),
-        outputLimitLow: normalizeValueMetadata(record.outputLimitLow, 'V', -12)
+        outputLimitLow: normalizeValueMetadata(record.outputLimitLow, 'V', -12),
+        inputOffset: normalizeValueMetadata(record.inputOffset, 'V', 0),
+        bandwidthHz: normalizeValueMetadata(record.bandwidthHz, 'Hz', 1000000, { min: 0 })
       };
     case 'logic-gate':
       return {

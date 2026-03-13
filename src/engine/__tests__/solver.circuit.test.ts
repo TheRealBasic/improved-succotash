@@ -361,3 +361,98 @@ describe('monte carlo capability gating', () => {
     expect(result.diagnostics.some((d) => /exclude this component from monte carlo/i.test(d.message))).toBe(true);
   });
 });
+
+describe('analog macro amplifier scenarios', () => {
+  it('drives comparator-like output to high rail for positive threshold crossing', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'in' }],
+      components: [
+        {
+          id: 'vin',
+          kind: 'source2p',
+          catalogTypeId: 'voltage-source',
+          from: 'in',
+          to: 'gnd',
+          voltage: { value: 0.2, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'cmp1',
+          kind: 'amplifier',
+          catalogTypeId: 'comparator',
+          from: 'in',
+          to: 'gnd',
+          gain: { value: 1e6, known: true, computed: false, unit: 'V' },
+          outputLimitHigh: { value: 5, known: true, computed: false, unit: 'V' },
+          outputLimitLow: { value: 0, known: true, computed: false, unit: 'V' },
+          inputOffset: { value: 0.001, known: true, computed: false, unit: 'V' },
+          bandwidthHz: { value: 1e6, known: true, computed: false, unit: 'Hz' }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit);
+    expect(result.values['component:cmp1:output']?.value).toBeCloseTo(5, 6);
+  });
+
+  it('saturates instrumentation amplifier output at the low rail', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'in' }],
+      components: [
+        {
+          id: 'vin',
+          kind: 'source2p',
+          catalogTypeId: 'voltage-source',
+          from: 'in',
+          to: 'gnd',
+          voltage: { value: -0.05, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'ina1',
+          kind: 'amplifier',
+          catalogTypeId: 'instrumentation-amplifier',
+          from: 'in',
+          to: 'gnd',
+          gain: { value: 1000, known: true, computed: false, unit: 'V' },
+          outputLimitHigh: { value: 10, known: true, computed: false, unit: 'V' },
+          outputLimitLow: { value: -10, known: true, computed: false, unit: 'V' },
+          inputOffset: { value: 0, known: true, computed: false, unit: 'V' },
+          bandwidthHz: { value: 200000, known: true, computed: false, unit: 'Hz' }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit);
+    expect(result.values['component:ina1:output']?.value).toBeCloseTo(-10, 6);
+  });
+
+  it('computes finite gain-stage output for regulator controller when unsaturated', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'in' }],
+      components: [
+        {
+          id: 'vin',
+          kind: 'source2p',
+          catalogTypeId: 'voltage-source',
+          from: 'in',
+          to: 'gnd',
+          voltage: { value: 0.001, known: true, computed: false, unit: 'V' }
+        },
+        {
+          id: 'ea1',
+          kind: 'amplifier',
+          catalogTypeId: 'generic-regulator-controller',
+          from: 'in',
+          to: 'gnd',
+          gain: { value: 1000, known: true, computed: false, unit: 'V' },
+          outputLimitHigh: { value: 5, known: true, computed: false, unit: 'V' },
+          outputLimitLow: { value: 0, known: true, computed: false, unit: 'V' },
+          inputOffset: { value: 0, known: true, computed: false, unit: 'V' },
+          bandwidthHz: { value: 150000, known: true, computed: false, unit: 'Hz' }
+        }
+      ]
+    };
+
+    const result = solveCircuit(circuit);
+    expect(result.values['component:ea1:output']?.value).toBeCloseTo(1, 6);
+  });
+});

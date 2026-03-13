@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { COMPONENT_CATALOG_ITEMS, validateComponentCatalog } from '../componentCatalog';
 
-const SOURCE_IDS = ['ac-voltage-source', 'pulse-voltage-source', 'reference-source', 'battery-cell', 'battery-pack', 'battery-coin-cell'] as const;
-const POWER_IDS = ['ldo-regulator', 'buck-regulator', 'boost-regulator', 'charge-pump', 'current-regulator'] as const;
+const SOURCE_IDS = ['ac-voltage-source', 'pulse-voltage-source', 'reference-source', 'battery-cell', 'battery-pack', 'battery-coin-cell', 'voltage-reference'] as const;
+const POWER_IDS = ['ldo-regulator', 'buck-regulator', 'boost-regulator', 'charge-pump', 'current-regulator', 'generic-regulator-controller'] as const;
 
 describe('source and power catalog support tiers', () => {
   it('keeps catalog valid with new source + power components', () => {
@@ -14,7 +14,7 @@ describe('source and power catalog support tiers', () => {
       const item = COMPONENT_CATALOG_ITEMS.find((entry) => entry.id === id);
       expect(item, `missing ${id}`).toBeDefined();
       expect(item?.category).toBe('sources');
-      expect(item?.pinCount).toBe(2);
+      expect(item?.pinCount).toBe(id === 'voltage-reference' ? 5 : 2);
       expect(item?.support.level).toMatch(/full|partial|visual-only/);
     }
   });

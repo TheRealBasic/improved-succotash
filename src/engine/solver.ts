@@ -100,6 +100,10 @@ const componentUnits: Partial<Record<CircuitComponent['catalogTypeId'], Unit>> =
   'relay-ssr': 'V',
   'switch-analog': 'V',
   'op-amp': 'V',
+  comparator: 'V',
+  'instrumentation-amplifier': 'V',
+  'generic-regulator-controller': 'V',
+  'voltage-reference': 'V',
   'logic-gate': 'V'
 };
 
@@ -155,6 +159,10 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
     case 'switch-analog':
       return component.controlThreshold;
     case 'op-amp':
+    case 'comparator':
+    case 'instrumentation-amplifier':
+    case 'generic-regulator-controller':
+    case 'voltage-reference':
       return component.gain;
     case 'logic-gate':
       return component.bridge.highThreshold;
@@ -507,9 +515,11 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
             addCoefficient(row, `V:${component.to}`, -sign * conductance);
           }
         }
-      } else if (component.catalogTypeId === 'op-amp') {
+      } else if (component.catalogTypeId === 'op-amp' || component.catalogTypeId === 'comparator' || component.catalogTypeId === 'instrumentation-amplifier' || component.catalogTypeId === 'generic-regulator-controller' || component.catalogTypeId === 'voltage-reference') {
         const gain = component.gain.value ?? 1e5;
-        const g = Math.min(Math.abs(gain), 1e6) / 1e6;
+        const offset = component.inputOffset?.value ?? 0;
+        const effectiveGain = gain * (1 + Math.abs(offset));
+        const g = Math.min(Math.abs(effectiveGain), 1e6) / 1e6;
         const isFrom = component.from === nodeId;
         const isTo = component.to === nodeId;
         if (isFrom || isTo) {
@@ -826,10 +836,11 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       values[`component:${component.id}:current`] = toSolvedValue(`component:${component.id}:current`, 'A', drop / r, false, true);
     }
 
-    if (component.catalogTypeId === 'op-amp') {
+    if (component.catalogTypeId === 'op-amp' || component.catalogTypeId === 'comparator' || component.catalogTypeId === 'instrumentation-amplifier' || component.catalogTypeId === 'generic-regulator-controller' || component.catalogTypeId === 'voltage-reference') {
       const hi = component.outputLimitHigh.value ?? 12;
       const lo = component.outputLimitLow.value ?? -12;
-      const out = Math.min(hi, Math.max(lo, (component.gain.value ?? 1) * drop));
+      const offset = component.inputOffset?.value ?? 0;
+      const out = Math.min(hi, Math.max(lo, (component.gain.value ?? 1) * (drop + offset)));
       values[`component:${component.id}:output`] = toSolvedValue(`component:${component.id}:output`, 'V', out, false, true);
     }
 
