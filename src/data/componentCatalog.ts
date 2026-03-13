@@ -260,6 +260,29 @@ const analogMacroAmplifierPropertyMap = {
   bandwidthHz: 'bandwidthHz'
 };
 
+
+const digitalThresholdPropertySchema: Record<string, ComponentEditableProperty> = {
+  gateType: { type: 'enum', label: 'Gate type', options: ['and', 'or', 'not', 'nand', 'nor', 'xor'] },
+  logicFamily: { type: 'enum', label: 'Logic family', options: ['CMOS', 'HC', 'HCT', 'TTL', 'LVC'] },
+  propagationDelayNs: { type: 'number', label: 'Propagation delay approximation', unit: 'ns', min: 0 },
+  pullDefault: { type: 'enum', label: 'Default input bias', options: ['none', 'pull-up', 'pull-down'] },
+  highThreshold: { type: 'number', label: 'Logic high threshold', unit: 'V', min: 0 },
+  lowThreshold: { type: 'number', label: 'Logic low threshold', unit: 'V', min: 0 },
+  highLevel: { type: 'number', label: 'Logic high level', unit: 'V', min: 0 },
+  lowLevel: { type: 'number', label: 'Logic low level', unit: 'V' }
+};
+
+const digitalThresholdPropertyMap = {
+  gateType: 'gateType',
+  logicFamily: 'logicFamily',
+  propagationDelayNs: 'propagationDelayNs',
+  pullDefault: 'pullDefault',
+  highThreshold: 'bridge.highThreshold',
+  lowThreshold: 'bridge.lowThreshold',
+  highLevel: 'bridge.highLevel',
+  lowLevel: 'bridge.lowLevel'
+};
+
 const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   {
     id: 'resistor',
@@ -1273,16 +1296,135 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     description: 'Generic digital logic gate.',
     tags: ['ic', 'digital', 'generic'],
     pinCount: 3,
-    editablePropertySchema: {
-      gateType: { type: 'enum', label: 'Gate type', options: ['and', 'or', 'not', 'nand', 'nor', 'xor'] },
-      highThreshold: { type: 'number', label: 'Logic high threshold', unit: 'V', min: 0 }
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: digitalThresholdPropertyMap },
+    defaultProps: {
+      gateType: 'nand',
+      logicFamily: 'CMOS',
+      propagationDelayNs: 12,
+      pullDefault: 'none',
+      highThreshold: 3,
+      lowThreshold: 1,
+      highLevel: 5,
+      lowLevel: 0
     },
-    solverBehavior: { model: 'logic-gate', propertyMap: { gateType: 'gateType', highThreshold: 'bridge.highThreshold' } },
-    defaultProps: { family: 'CMOS', gateType: 'nand' },
     metadata: {
       aliases: ['Gate'],
       shortcut: { key: 'T', id: 'place-logic' }
     },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+
+  {
+    id: 'logic-buffer',
+    displayName: 'Logic Buffer',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Non-inverting digital buffer with configurable threshold bridge model.',
+    tags: ['ic', 'digital', 'buffer', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'Threshold behavior is modeled; output drive strength and delay transients are approximated.' },
+    defaultProps: { gateType: 'or', logicFamily: 'HC', propagationDelayNs: 10, pullDefault: 'none', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'buffer' },
+    metadata: { aliases: ['Buffer', 'BUF'] },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+  {
+    id: 'logic-schmitt-trigger',
+    displayName: 'Schmitt Trigger',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Digital Schmitt trigger inverter using hysteretic bridge thresholds.',
+    tags: ['ic', 'digital', 'schmitt-trigger', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'Threshold hysteresis is approximated with low/high bridge thresholds; transient slew behavior is not modeled.' },
+    defaultProps: { gateType: 'not', logicFamily: 'HC', propagationDelayNs: 14, pullDefault: 'pull-down', highThreshold: 3.2, lowThreshold: 1.4, highLevel: 5, lowLevel: 0, digitalAbstraction: 'schmitt-trigger' },
+    metadata: { aliases: ['Schmitt', 'Trigger Inverter'] },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+  {
+    id: 'logic-tri-state-buffer',
+    displayName: 'Tri-State Buffer',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Tri-state capable buffer; high-impedance output state is diagnostic-only in this solver.',
+    tags: ['ic', 'digital', 'tri-state', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'Enable/Hi-Z behavior and bus contention are not explicitly solved; emits targeted diagnostics in timing analyses.' },
+    defaultProps: { gateType: 'or', logicFamily: 'LVC', propagationDelayNs: 8, pullDefault: 'none', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'tri-state-buffer' },
+    metadata: { aliases: ['Tri-state', 'Buffer 3-state'] },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+  {
+    id: 'logic-latch',
+    displayName: 'Logic Latch',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Level-sensitive latch abstraction mapped to digital threshold behavior.',
+    tags: ['ic', 'digital', 'latch', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'State retention and transparency windows are not transient-modeled; DC threshold transfer is used.' },
+    defaultProps: { gateType: 'or', logicFamily: 'HC', propagationDelayNs: 18, pullDefault: 'pull-down', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'latch' },
+    metadata: { aliases: ['SR Latch', 'D Latch'] },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+  {
+    id: 'logic-flip-flop',
+    displayName: 'Logic Flip-Flop',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Edge-triggered flip-flop abstraction using bridge-level thresholding.',
+    tags: ['ic', 'digital', 'flip-flop', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'Clock-edge capture and setup/hold constraints are not simulated; targeted diagnostics are emitted for transient analysis.' },
+    defaultProps: { gateType: 'or', logicFamily: 'HC', propagationDelayNs: 20, pullDefault: 'none', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'flip-flop' },
+    metadata: { aliases: ['DFF', 'JK Flip-Flop'] },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+  {
+    id: 'logic-counter',
+    displayName: 'Logic Counter',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Digital counter abstraction with threshold-based output mapping.',
+    tags: ['ic', 'digital', 'counter', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'Counting sequence and rollover timing are not simulated; static threshold bridge behavior only.' },
+    defaultProps: { gateType: 'or', logicFamily: 'HC', propagationDelayNs: 24, pullDefault: 'none', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'counter' },
+    metadata: { aliases: ['Counter', 'Binary Counter'] },
+    sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
+  },
+  {
+    id: 'logic-multiplexer',
+    displayName: 'Logic Multiplexer',
+    kind: 'logic-gate',
+    category: 'ics',
+    subcategory: 'logic-family',
+    description: 'Multiplexer abstraction mapped to a thresholded digital transfer model.',
+    tags: ['ic', 'digital', 'mux', 'multiplexer', 'new'],
+    pinCount: 3,
+    editablePropertySchema: digitalThresholdPropertySchema,
+    solverBehavior: { model: 'logic-gate', propertyMap: { ...digitalThresholdPropertyMap, digitalAbstraction: 'digitalAbstraction' } },
+    support: { level: 'partial', notes: 'Select-line timing and channel skew are not modeled in transient analysis.' },
+    defaultProps: { gateType: 'or', logicFamily: 'HC', propagationDelayNs: 16, pullDefault: 'none', highThreshold: 3, lowThreshold: 1, highLevel: 5, lowLevel: 0, digitalAbstraction: 'multiplexer' },
+    metadata: { aliases: ['MUX', 'Selector'] },
     sidebar: { category: 'ics', subcategory: 'logic-74xx-hc-hct' }
   },
   {

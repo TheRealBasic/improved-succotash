@@ -104,7 +104,14 @@ const componentUnits: Partial<Record<CircuitComponent['catalogTypeId'], Unit>> =
   'instrumentation-amplifier': 'V',
   'generic-regulator-controller': 'V',
   'voltage-reference': 'V',
-  'logic-gate': 'V'
+  'logic-gate': 'V',
+  'logic-buffer': 'V',
+  'logic-schmitt-trigger': 'V',
+  'logic-tri-state-buffer': 'V',
+  'logic-latch': 'V',
+  'logic-flip-flop': 'V',
+  'logic-counter': 'V',
+  'logic-multiplexer': 'V'
 };
 
 const isVoltageLikeSource = (catalogTypeId: CircuitComponent['catalogTypeId']): boolean =>
@@ -165,6 +172,13 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
     case 'voltage-reference':
       return component.gain;
     case 'logic-gate':
+    case 'logic-buffer':
+    case 'logic-schmitt-trigger':
+    case 'logic-tri-state-buffer':
+    case 'logic-latch':
+    case 'logic-flip-flop':
+    case 'logic-counter':
+    case 'logic-multiplexer':
       return component.bridge.highThreshold;
     case 'wire':
       return undefined;
@@ -527,12 +541,9 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
           addCoefficient(row, `V:${component.from}`, sign * g);
           addCoefficient(row, `V:${component.to}`, -sign * g);
         }
-      } else if (component.catalogTypeId === 'logic-gate') {
-        const threshold = component.bridge.highThreshold.value ?? 2.5;
-        const high = component.bridge.highLevel.value ?? 5;
-        const low = component.bridge.lowLevel.value ?? 0;
+      } else if (component.kind === 'digital' && isDigitalCatalogType(component.catalogTypeId)) {
         const inV = getKnownVoltage(component.from) ?? 0;
-        const outV = inV >= threshold ? high : low;
+        const outV = resolveDigitalOutputVoltage(component, inV);
         if (component.to === nodeId) {
           rhs += outV;
         }
@@ -756,6 +767,31 @@ const findConflictingIdealVoltageSources = (circuitState: CircuitState): SolverD
   return diagnostics;
 };
 
+const isDigitalCatalogType = (catalogTypeId: CircuitComponent['catalogTypeId']): boolean =>
+  [
+    'logic-gate',
+    'logic-buffer',
+    'logic-schmitt-trigger',
+    'logic-tri-state-buffer',
+    'logic-latch',
+    'logic-flip-flop',
+    'logic-counter',
+    'logic-multiplexer'
+  ].includes(catalogTypeId);
+
+const resolveDigitalOutputVoltage = (component: Extract<CircuitComponent, { kind: 'digital' }>, inputVoltage: number): number => {
+  const highThreshold = component.bridge.highThreshold.value ?? 3;
+  const lowThreshold = component.bridge.lowThreshold.value ?? 1;
+  const highLevel = component.bridge.highLevel.value ?? 5;
+  const lowLevel = component.bridge.lowLevel.value ?? 0;
+  const inverting = component.gateType === 'not' || component.gateType === 'nand' || component.gateType === 'nor';
+
+  const fallbackHigh = component.pullDefault === 'pull-up';
+  const logicalHigh = inputVoltage >= highThreshold ? true : inputVoltage <= lowThreshold ? false : fallbackHigh;
+  const resolvedHigh = inverting ? !logicalHigh : logicalHigh;
+  return resolvedHigh ? highLevel : lowLevel;
+};
+
 const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
   const diagnostics = validateCircuit(circuitState);
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === 'error');
@@ -844,8 +880,8 @@ const solveCircuitCore = (circuitState: CircuitState): SolveCircuitResult => {
       values[`component:${component.id}:output`] = toSolvedValue(`component:${component.id}:output`, 'V', out, false, true);
     }
 
-    if (component.catalogTypeId === 'logic-gate') {
-      const v = drop >= (component.bridge.highThreshold.value ?? 2.5) ? (component.bridge.highLevel.value ?? 5) : (component.bridge.lowLevel.value ?? 0);
+    if (component.kind === 'digital' && isDigitalCatalogType(component.catalogTypeId)) {
+      const v = resolveDigitalOutputVoltage(component, drop);
       values[`component:${component.id}:logic_output`] = toSolvedValue(`component:${component.id}:logic_output`, 'V', v, false, true);
     }
 

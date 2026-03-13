@@ -49,7 +49,7 @@ const supportBadgeLabel: Record<'full' | 'partial' | 'visual-only', string> = {
 
 const readPath = (root: unknown, path: string): unknown => path.split('.').reduce<unknown>((acc, part) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined), root);
 
-const isUnit = (value: string | undefined): value is Unit => value != null && ['V', 'A', 'Ω', 'F', 'H', 'Hz'].includes(value);
+const isUnit = (value: string | undefined): value is Unit => value != null && ['V', 'A', 'Ω', 'F', 'H', 'Hz', 'ns'].includes(value);
 const isValueMetadata = (value: unknown): value is ValueMetadata => Boolean(value && typeof value === 'object' && 'known' in (value as ValueMetadata) && 'computed' in (value as ValueMetadata));
 
 const getEditableFields = (component?: CircuitComponent): EditableField[] => {

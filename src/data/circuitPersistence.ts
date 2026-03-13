@@ -46,6 +46,13 @@ const getCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefined =>
     case 'generic-regulator-controller':
     case 'voltage-reference':
     case 'logic-gate':
+    case 'logic-buffer':
+    case 'logic-schmitt-trigger':
+    case 'logic-tri-state-buffer':
+    case 'logic-latch':
+    case 'logic-flip-flop':
+    case 'logic-counter':
+    case 'logic-multiplexer':
     case 'wire':
       return value;
     default:
@@ -75,7 +82,21 @@ const normalizeCatalogTypeId = (value: unknown): ComponentCatalogTypeId | undefi
                   ? 'voltage-reference'
                   : value === 'logicGate'
             ? 'logic-gate'
-            : value;
+            : value === 'logicBuffer'
+              ? 'logic-buffer'
+              : value === 'logicSchmittTrigger'
+                ? 'logic-schmitt-trigger'
+                : value === 'logicTriStateBuffer'
+                  ? 'logic-tri-state-buffer'
+                  : value === 'logicLatch'
+                    ? 'logic-latch'
+                    : value === 'logicFlipFlop'
+                      ? 'logic-flip-flop'
+                      : value === 'logicCounter'
+                        ? 'logic-counter'
+                        : value === 'logicMultiplexer'
+                          ? 'logic-multiplexer'
+                          : value;
 
   return getCatalogTypeId(renamed);
 };
@@ -261,6 +282,13 @@ const normalizeComponent = (component: unknown): CircuitComponent | undefined =>
         bandwidthHz: normalizeValueMetadata(record.bandwidthHz, 'Hz', 1000000, { min: 0 })
       };
     case 'logic-gate':
+    case 'logic-buffer':
+    case 'logic-schmitt-trigger':
+    case 'logic-tri-state-buffer':
+    case 'logic-latch':
+    case 'logic-flip-flop':
+    case 'logic-counter':
+    case 'logic-multiplexer':
       return {
         id,
         from,
@@ -269,6 +297,10 @@ const normalizeComponent = (component: unknown): CircuitComponent | undefined =>
         catalogTypeId,
         label: asString(record.label) ?? `G-${id}`,
         gateType: (asString(record.gateType ?? record.type) as 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor' | undefined) ?? 'not',
+        digitalAbstraction: (asString(record.digitalAbstraction) as 'combinational' | 'buffer' | 'schmitt-trigger' | 'tri-state-buffer' | 'latch' | 'flip-flop' | 'counter' | 'multiplexer' | undefined) ?? undefined,
+        logicFamily: asString(record.logicFamily) ?? 'CMOS',
+        propagationDelayNs: normalizeValueMetadata(record.propagationDelayNs, 'ns', 0, { min: 0 }),
+        pullDefault: (asString(record.pullDefault) as 'none' | 'pull-up' | 'pull-down' | undefined) ?? 'none',
         bridge: {
           highThreshold: normalizeValueMetadata(asRecord(record.bridge)?.highThreshold, 'V', 3),
           lowThreshold: normalizeValueMetadata(asRecord(record.bridge)?.lowThreshold, 'V', 1),

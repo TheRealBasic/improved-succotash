@@ -21,7 +21,9 @@ const UNIT_TOKEN_ALIASES: Record<string, Unit> = {
   H: 'H',
   'Ω': 'Ω',
   ohm: 'Ω',
-  OHM: 'Ω'
+  OHM: 'Ω',
+  ns: 'ns',
+  NS: 'ns'
 };
 
 export type ParseValueWithUnitResult =

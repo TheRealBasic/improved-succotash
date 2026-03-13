@@ -93,9 +93,46 @@ const componentFactory = (catalogTypeId: ComponentCatalogTypeId, id: string, fro
     case 'op-amp':
       return { id, kind: 'amplifier', catalogTypeId, from, to, label: `U-${id}`, gain: createValueMetadata('V', 100000), outputLimitHigh: createValueMetadata('V', 12), outputLimitLow: createValueMetadata('V', -12) };
     case 'logic-gate':
-      return { id, kind: 'digital', catalogTypeId, from, to, label: `G-${id}`, gateType: 'not', bridge: { highThreshold: createValueMetadata('V', 3), lowThreshold: createValueMetadata('V', 1), highLevel: createValueMetadata('V', 5), lowLevel: createValueMetadata('V', 0) } };
+    case 'logic-buffer':
+    case 'logic-schmitt-trigger':
+    case 'logic-tri-state-buffer':
+    case 'logic-latch':
+    case 'logic-flip-flop':
+    case 'logic-counter':
+    case 'logic-multiplexer':
+      return {
+        id,
+        kind: 'digital',
+        catalogTypeId,
+        from,
+        to,
+        label: `G-${id}`,
+        gateType: catalogTypeId === 'logic-schmitt-trigger' ? 'not' : 'or',
+        digitalAbstraction:
+          catalogTypeId === 'logic-gate'
+            ? 'combinational'
+            : catalogTypeId === 'logic-buffer'
+              ? 'buffer'
+              : catalogTypeId === 'logic-schmitt-trigger'
+                ? 'schmitt-trigger'
+                : catalogTypeId === 'logic-tri-state-buffer'
+                  ? 'tri-state-buffer'
+                  : catalogTypeId === 'logic-latch'
+                    ? 'latch'
+                    : catalogTypeId === 'logic-flip-flop'
+                      ? 'flip-flop'
+                      : catalogTypeId === 'logic-counter'
+                        ? 'counter'
+                        : 'multiplexer',
+        logicFamily: 'CMOS',
+        propagationDelayNs: createValueMetadata('ns', 10),
+        pullDefault: 'none',
+        bridge: { highThreshold: createValueMetadata('V', 3), lowThreshold: createValueMetadata('V', 1), highLevel: createValueMetadata('V', 5), lowLevel: createValueMetadata('V', 0) }
+      };
     case 'wire':
       return { id, kind: 'passive2p', catalogTypeId, from, to, label: 'wire' };
+    default:
+      return { id, kind: 'passive2p', catalogTypeId: 'wire', from, to, label: `wire-${id}` };
   }
 };
 
@@ -587,9 +624,13 @@ const App = () => {
         'offLeakageCurrent',
         'controlThreshold',
         'hysteresis',
-        'controlSignal'
+        'controlSignal',
+        'propagationDelayNs',
+        'lowThreshold',
+        'highLevel',
+        'lowLevel'
       ].includes(valueKey) && typeof value === 'number';
-      const isEditableGateType = valueKey === 'gateType' && component.catalogTypeId === 'logic-gate' && typeof value === 'string';
+      const isEditableGateType = valueKey === 'gateType' && component.kind === 'digital' && typeof value === 'string';
       if (isEditableNumeric || isEditableGateType) {
         trackComponentPropertyEdited({ componentId, propertyKey: valueKey, analysisMode: mode });
       }
@@ -636,8 +677,20 @@ const App = () => {
         if (valueKey === 'gain' && component.catalogTypeId === 'op-amp' && typeof value === 'number') {
           return { ...component, gain: { ...component.gain, value } };
         }
-        if (valueKey === 'highThreshold' && component.catalogTypeId === 'logic-gate' && typeof value === 'number') {
+        if (valueKey === 'highThreshold' && component.kind === 'digital' && typeof value === 'number') {
           return { ...component, bridge: { ...component.bridge, highThreshold: { ...component.bridge.highThreshold, value } } };
+        }
+        if (valueKey === 'lowThreshold' && component.kind === 'digital' && typeof value === 'number') {
+          return { ...component, bridge: { ...component.bridge, lowThreshold: { ...component.bridge.lowThreshold, value } } };
+        }
+        if (valueKey === 'highLevel' && component.kind === 'digital' && typeof value === 'number') {
+          return { ...component, bridge: { ...component.bridge, highLevel: { ...component.bridge.highLevel, value } } };
+        }
+        if (valueKey === 'lowLevel' && component.kind === 'digital' && typeof value === 'number') {
+          return { ...component, bridge: { ...component.bridge, lowLevel: { ...component.bridge.lowLevel, value } } };
+        }
+        if (valueKey === 'propagationDelayNs' && component.kind === 'digital' && typeof value === 'number') {
+          return { ...component, propagationDelayNs: { ...(component.propagationDelayNs ?? createValueMetadata('ns', 0)), value } };
         }
 
         if (valueKey === 'onResistance' && component.kind === 'switch' && 'onResistance' in component && typeof value === 'number') {
@@ -650,13 +703,19 @@ const App = () => {
           return { ...component, controlThreshold: { ...component.controlThreshold, value } };
         }
         if (valueKey === 'hysteresis' && component.kind === 'switch' && 'hysteresis' in component && typeof value === 'number') {
-          return { ...component, hysteresis: { ...(component.hysteresis ?? createValueMetadata('V', 0)), value } };
+          return { ...component, hysteresis: { ...(component.hysteresis ?? createValueMetadata('ns', 0)), value } };
         }
         if (valueKey === 'controlSignal' && component.kind === 'switch' && 'controlSignal' in component && typeof value === 'number') {
-          return { ...component, controlSignal: { ...(component.controlSignal ?? createValueMetadata('V', 0)), value } };
+          return { ...component, controlSignal: { ...(component.controlSignal ?? createValueMetadata('ns', 0)), value } };
         }
-        if (valueKey === 'gateType' && component.catalogTypeId === 'logic-gate' && typeof value === 'string') {
+        if (valueKey === 'gateType' && component.kind === 'digital' && typeof value === 'string') {
           return { ...component, gateType: value as typeof component.gateType };
+        }
+        if (valueKey === 'logicFamily' && component.kind === 'digital' && typeof value === 'string') {
+          return { ...component, logicFamily: value };
+        }
+        if (valueKey === 'pullDefault' && component.kind === 'digital' && typeof value === 'string') {
+          return { ...component, pullDefault: value as typeof component.pullDefault };
         }
 
         return component;
