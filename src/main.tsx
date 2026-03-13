@@ -46,8 +46,22 @@ const componentFactory = (catalogTypeId: ComponentCatalogTypeId, id: string, fro
     case 'inductor':
       return { id, kind: 'passive2p', catalogTypeId, from, to, label: `L-${id}`, inductance: createValueMetadata('H', 0.01, { min: 0 }) };
     case 'voltage-source':
-      return { id, kind: 'source2p', catalogTypeId, from, to, label: `V-${id}`, voltage: createValueMetadata('V', 5, { nonZero: true }) };
+    case 'reference-source':
+    case 'battery-cell':
+    case 'battery-pack':
+    case 'battery-coin-cell':
+    case 'ldo-regulator':
+    case 'buck-regulator':
+    case 'boost-regulator':
+      return { id, kind: 'source2p', catalogTypeId, from, to, label: `V-${id}`, voltage: createValueMetadata('V', 5, { nonZero: true }), nonIdeal: { internalResistance: createValueMetadata('Ω', 0), rippleAmplitude: createValueMetadata('V', 0), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 0) } };
+    case 'ac-voltage-source':
+      return { id, kind: 'source2p', catalogTypeId, from, to, label: `VAC-${id}`, voltage: createValueMetadata('V', 1), nonIdeal: { rippleAmplitude: createValueMetadata('V', 1), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 1000) } };
+    case 'pulse-voltage-source':
+      return { id, kind: 'source2p', catalogTypeId, from, to, label: `VP-${id}`, voltage: createValueMetadata('V', 5), nonIdeal: { rippleAmplitude: createValueMetadata('V', 5), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 1000) } };
+    case 'charge-pump':
+      return { id, kind: 'source2p', catalogTypeId, from, to, label: `CP-${id}`, voltage: createValueMetadata('V', 9) };
     case 'current-source':
+    case 'current-regulator':
       return { id, kind: 'source2p', catalogTypeId, from, to, label: `I-${id}`, current: createValueMetadata('A', 0.01), nonIdeal: { internalResistance: createValueMetadata('Ω', 0), rippleAmplitude: createValueMetadata('A', 0), rippleFrequencyHz: createValueMetadata('Hz' as Unit, 0) } };
     case 'diode':
       return { id, kind: 'switch', catalogTypeId, from, to, label: `D-${id}`, forwardDrop: createValueMetadata('V', 0.7), onResistance: createValueMetadata('Ω', 10, { min: 0.001, nonZero: true }), offResistance: createValueMetadata('Ω', 1_000_000, { min: 1 }) };
@@ -571,20 +585,18 @@ const App = () => {
         if (valueKey === 'inductance' && component.catalogTypeId === 'inductor' && typeof value === 'number') {
           return { ...component, inductance: { ...component.inductance, value } };
         }
-        if (valueKey === 'voltage' && component.catalogTypeId === 'voltage-source' && typeof value === 'number') {
+        if (valueKey === 'voltage' && component.kind === 'source2p' && 'voltage' in component && typeof value === 'number') {
           return { ...component, voltage: { ...component.voltage, value } };
         }
-        if (valueKey === 'current' && component.catalogTypeId === 'current-source' && typeof value === 'number') {
+        if (valueKey === 'current' && component.kind === 'source2p' && 'current' in component && typeof value === 'number') {
           return { ...component, current: { ...component.current, value } };
         }
-        if (valueKey === 'internalResistance' && (component.catalogTypeId === 'current-source' || component.catalogTypeId === 'voltage-source') && typeof value === 'number') {
+        if (valueKey === 'internalResistance' && component.kind === 'source2p' && typeof value === 'number') {
           return { ...component, nonIdeal: { ...component.nonIdeal, internalResistance: { ...(component.nonIdeal?.internalResistance ?? createValueMetadata('Ω', 0)), value } } };
         }
-        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'voltage-source' && typeof value === 'number') {
-          return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('V', 0)), value } } };
-        }
-        if (valueKey === 'rippleAmplitude' && component.catalogTypeId === 'current-source' && typeof value === 'number') {
-          return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata('A', 0)), value } } };
+        if (valueKey === 'rippleAmplitude' && component.kind === 'source2p' && typeof value === 'number') {
+          const unit: Unit = 'current' in component ? 'A' : 'V';
+          return { ...component, nonIdeal: { ...component.nonIdeal, rippleAmplitude: { ...(component.nonIdeal?.rippleAmplitude ?? createValueMetadata(unit, 0)), value } } };
         }
         if (valueKey === 'forwardDrop' && component.catalogTypeId === 'diode' && typeof value === 'number') {
           return { ...component, forwardDrop: { ...component.forwardDrop, value } };

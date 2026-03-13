@@ -16,6 +16,8 @@ export type ComponentCatalogEntry = {
   pinCount: number;
   manufacturer?: string;
   fullySimulated: boolean;
+  supportLevel: 'full' | 'partial' | 'visual-only';
+  supportNotes?: string;
   isNew: boolean;
   partNumber?: string;
   shortcutId?: string;
@@ -116,7 +118,9 @@ export const buildComponentCatalog = (items: ComponentCatalogItem[]): ComponentC
         subcategoryId: `${sidebarPath.categoryId}::${sidebarPath.subcategoryId}`,
         pinCount: item.pinCount,
         manufacturer: item.manufacturer,
-        fullySimulated: item.tags.includes('fully-simulated'),
+        fullySimulated: item.tags.includes('fully-simulated') || (item.support?.level ?? 'partial') === 'full',
+        supportLevel: item.support?.level ?? (item.tags.includes('fully-simulated') ? 'full' : 'partial'),
+        supportNotes: item.support?.notes,
         isNew: item.tags.includes('new'),
         partNumber: item.partNumber,
         shortcutId: item.metadata?.shortcut ? item.metadata.shortcut.id ?? `place-${item.id}` : undefined,

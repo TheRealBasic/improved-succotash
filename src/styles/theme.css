@@ -378,6 +378,45 @@ body {
   margin-left: 0.4rem;
 }
 
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: flex-start;
+}
+
+.palette-item-main {
+  flex: 1;
+  text-align: left;
+}
+
+.support-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid #5f74b9;
+  background: #213469;
+  color: #e8eeff;
+  white-space: nowrap;
+}
+
+.support-full {
+  border-color: #3fbf86;
+  color: #abffd8;
+}
+
+.support-partial {
+  border-color: #d6a84b;
+  color: #ffe3a6;
+}
+
+.support-visual-only {
+  border-color: #9f78d8;
+  color: #e2cbff;
+}
+
 .library-filters {
   display: grid;
   gap: 0.5rem;

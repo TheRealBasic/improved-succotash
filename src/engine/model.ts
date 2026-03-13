@@ -26,6 +26,17 @@ export type ComponentCatalogTypeId =
   | 'inductor'
   | 'voltage-source'
   | 'current-source'
+  | 'ac-voltage-source'
+  | 'pulse-voltage-source'
+  | 'reference-source'
+  | 'battery-cell'
+  | 'battery-pack'
+  | 'battery-coin-cell'
+  | 'ldo-regulator'
+  | 'buck-regulator'
+  | 'boost-regulator'
+  | 'charge-pump'
+  | 'current-regulator'
   | 'diode'
   | 'bjt'
   | 'mosfet'
@@ -102,14 +113,14 @@ export type InductorComponent = ComponentBase & {
 
 export type VoltageSourceComponent = ComponentBase & {
   kind: 'source2p';
-  catalogTypeId: 'voltage-source';
+  catalogTypeId: 'voltage-source' | 'ac-voltage-source' | 'pulse-voltage-source' | 'reference-source' | 'battery-cell' | 'battery-pack' | 'battery-coin-cell' | 'ldo-regulator' | 'buck-regulator' | 'boost-regulator' | 'charge-pump';
   voltage: ValueMetadata;
   nonIdeal?: SourceNonIdeal;
 };
 
 export type CurrentSourceComponent = ComponentBase & {
   kind: 'source2p';
-  catalogTypeId: 'current-source';
+  catalogTypeId: 'current-source' | 'current-regulator';
   current: ValueMetadata;
   nonIdeal?: SourceNonIdeal;
 };
@@ -203,7 +214,8 @@ export type SolverDiagnostic = {
     | 'inconsistent_temperature'
     | 'target_unsolvable'
     | 'target_non_unique'
-    | 'target_not_found';
+    | 'target_not_found'
+    | 'unsupported_analysis_mode';
   severity: DiagnosticSeverity;
   message: string;
   componentId?: string;

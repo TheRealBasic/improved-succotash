@@ -20,6 +20,13 @@ type PersistedSidebarSessionState = {
   filters: ComponentLibraryFilters;
 };
 
+
+const supportLabel: Record<ComponentCatalogEntry['supportLevel'], string> = {
+  full: 'Full',
+  partial: 'Partial',
+  'visual-only': 'Visual only'
+};
+
 const STORAGE_KEY = 'circuit-workbench-component-library-state-v1';
 const SESSION_STORAGE_KEY = 'circuit-workbench-component-library-session-v1';
 
@@ -108,7 +115,10 @@ const EntryButton = ({ entry, shortcutLabel }: { entry: ComponentCatalogEntry; s
     onDragStart={(event) => event.dataTransfer.setData('application/x-component-kind', entry.kind)}
     title={entry.shortcutId ? `Shortcut: ${shortcutLabel(entry.shortcutId)}` : undefined}
   >
-    <span>{entry.label}</span>
+    <span className="palette-item-main">{entry.label}</span>
+    <span className={`support-badge support-${entry.supportLevel}`} title={entry.supportNotes ?? `Solver support: ${supportLabel[entry.supportLevel]}`}>
+      {supportLabel[entry.supportLevel]}
+    </span>
     {entry.partNumber && <small>{entry.partNumber}</small>}
   </button>
 );

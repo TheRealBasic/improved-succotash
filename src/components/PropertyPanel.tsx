@@ -41,6 +41,12 @@ type EditableField = {
 
 const formatValue = (value?: number): string => (value == null || Number.isNaN(value) ? '—' : value.toFixed(4));
 
+const supportBadgeLabel: Record<'full' | 'partial' | 'visual-only', string> = {
+  full: 'Full solver support',
+  partial: 'Partial solver support',
+  'visual-only': 'Visual only'
+};
+
 const readPath = (root: unknown, path: string): unknown => path.split('.').reduce<unknown>((acc, part) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined), root);
 
 const isUnit = (value: string | undefined): value is Unit => value != null && ['V', 'A', 'Ω', 'F', 'H', 'Hz'].includes(value);
@@ -139,6 +145,7 @@ const TextInput = ({ value, onChange }: { value: string; onChange: (next: string
 
 export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targetResult, selectedTarget, onChangeSelectedTarget, onSolveForTarget, solveShortcutHint, onUpdateComponentProperty, onValueApplied, onJumpToEquationRow }: PropertyPanelProps) => {
   const editableFields = getEditableFields(selectedComponent);
+  const selectedCatalogItem = selectedComponent ? COMPONENT_CATALOG_ITEMS.find((item) => item.id === selectedComponent.catalogTypeId) : undefined;
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
   const [draftPrefixes, setDraftPrefixes] = useState<Record<string, Prefix>>({});
   const [isValueUpdated, setIsValueUpdated] = useState(false);
@@ -208,6 +215,16 @@ export const PropertyPanel = ({ selectedComponent, selectedNodeId, solved, targe
         {selectedComponent && editableFields.length > 0 && (
           <>
             <h3>{selectedComponent.label ?? selectedComponent.kind}</h3>
+            {selectedCatalogItem && (
+              <p>
+                <span
+                  className={`support-badge support-${selectedCatalogItem.support.level}`}
+                  title={selectedCatalogItem.support.notes}
+                >
+                  {supportBadgeLabel[selectedCatalogItem.support.level]}
+                </span>
+              </p>
+            )}
             {editableFields.map((field) => {
               const draft = draftValues[field.key] ?? '';
               const validationMessage = validationMessages[field.key];

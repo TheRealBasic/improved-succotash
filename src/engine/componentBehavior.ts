@@ -35,6 +35,17 @@ export const getBehaviorFamilyForCatalogType = (catalogTypeId: ComponentCatalogT
       return 'passive2p';
     case 'voltage-source':
     case 'current-source':
+    case 'ac-voltage-source':
+    case 'pulse-voltage-source':
+    case 'reference-source':
+    case 'battery-cell':
+    case 'battery-pack':
+    case 'battery-coin-cell':
+    case 'ldo-regulator':
+    case 'buck-regulator':
+    case 'boost-regulator':
+    case 'charge-pump':
+    case 'current-regulator':
       return 'source2p';
     case 'diode':
     case 'bjt':
@@ -57,6 +68,18 @@ const familyCapabilityRegistry: Record<ComponentKind, CapabilityMap> = {
 };
 
 const catalogCapabilityRegistry: Partial<Record<ComponentCatalogTypeId, Partial<CapabilityMap>>> = {
+
+  'ac-voltage-source': { dc: false, ac: true, transient: true, monteCarlo: false },
+  'pulse-voltage-source': { dc: false, ac: false, transient: true, monteCarlo: false },
+  'reference-source': { dc: true, ac: true, transient: true, monteCarlo: true },
+  'battery-cell': { dc: true, ac: false, transient: false, monteCarlo: true },
+  'battery-pack': { dc: true, ac: false, transient: false, monteCarlo: true },
+  'battery-coin-cell': { dc: true, ac: false, transient: false, monteCarlo: true },
+  'ldo-regulator': { dc: true, ac: false, transient: false, monteCarlo: false },
+  'buck-regulator': { dc: true, ac: false, transient: false, monteCarlo: false },
+  'boost-regulator': { dc: true, ac: false, transient: false, monteCarlo: false },
+  'charge-pump': { dc: false, ac: false, transient: false, monteCarlo: false },
+  'current-regulator': { dc: true, ac: false, transient: false, monteCarlo: false },
   diode: { ac: false, transient: false, monteCarlo: false },
   bjt: { ac: false, transient: false, monteCarlo: false },
   mosfet: { ac: false, transient: false, monteCarlo: false },
@@ -88,7 +111,7 @@ export const getUnsupportedComponentDiagnostics = (
   circuit.components
     .filter((component) => !getComponentCapabilities(component)[analysisType])
     .map((component) => ({
-      code: 'unsupported_component_behavior' as const,
+      code: 'unsupported_analysis_mode' as const,
       severity: 'warning' as const,
       componentId: component.id,
       message: `Component ${component.id} (${component.catalogTypeId}/${getBehaviorFamilyForCatalogType(component.catalogTypeId)}) is not supported by ${analysisType.toUpperCase()} analysis. ${capabilityActionByType[analysisType]}`

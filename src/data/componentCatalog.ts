@@ -41,6 +41,13 @@ export type ComponentSolverBehavior = {
   pinMap?: Record<string, string>;
 };
 
+export type ComponentSupportLevel = 'full' | 'partial' | 'visual-only';
+
+export type ComponentSupportMetadata = {
+  level: ComponentSupportLevel;
+  notes?: string;
+};
+
 export type ComponentCatalogItem = {
   id: string;
   displayName: string;
@@ -54,6 +61,7 @@ export type ComponentCatalogItem = {
   pins: ComponentPinMetadata[];
   editablePropertySchema: Record<string, ComponentEditableProperty>;
   solverBehavior: ComponentSolverBehavior;
+  support: ComponentSupportMetadata;
   defaultProps: Record<string, number | string | boolean>;
   partNumber?: string;
   manufacturer?: string;
@@ -89,7 +97,11 @@ export const SIDEBAR_GROUPING = {
     label: 'Sources',
     order: 1,
     subcategories: {
-      dc: { label: 'DC', order: 0 }
+      dc: { label: 'DC', order: 0 },
+      ac: { label: 'AC', order: 1 },
+      pulse: { label: 'Pulse', order: 2 },
+      reference: { label: 'Reference', order: 3 },
+      battery: { label: 'Battery', order: 4 }
     }
   },
   semiconductors: {
@@ -123,7 +135,11 @@ export const SIDEBAR_GROUPING = {
     label: 'Power',
     order: 5,
     subcategories: {
-      generic: { label: 'Generic', order: 0 }
+      generic: { label: 'Generic', order: 0 },
+      regulation: { label: 'Regulation', order: 1 },
+      conversion: { label: 'Conversion', order: 2 },
+      charging: { label: 'Charging', order: 3 },
+      current: { label: 'Current', order: 4 }
     }
   },
   sensors: {
@@ -148,9 +164,9 @@ export const SIDEBAR_GROUPING = {
 
 type LegacyComponentCatalogItem = Omit<
   ComponentCatalogItem,
-  'symbolVariant' | 'pins' | 'editablePropertySchema' | 'solverBehavior' | 'compatibilityTags'
+  'symbolVariant' | 'pins' | 'editablePropertySchema' | 'solverBehavior' | 'compatibilityTags' | 'support'
 > &
-  Partial<Pick<ComponentCatalogItem, 'symbolVariant' | 'pins' | 'editablePropertySchema' | 'solverBehavior' | 'compatibilityTags'>>;
+  Partial<Pick<ComponentCatalogItem, 'symbolVariant' | 'pins' | 'editablePropertySchema' | 'solverBehavior' | 'compatibilityTags' | 'support'>>;
 
 const buildDefaultPins = (pinCount: number): ComponentPinMetadata[] =>
   Array.from({ length: pinCount }, (_, index) => ({
@@ -184,6 +200,7 @@ const migrateCatalogItem = (item: LegacyComponentCatalogItem): ComponentCatalogI
     model: item.kind,
     propertyMap: Object.fromEntries(Object.keys(item.defaultProps).map((key) => [key, key]))
   },
+  support: item.support ?? { level: item.tags.includes('fully-simulated') ? 'full' : 'partial' },
   compatibilityTags: item.compatibilityTags ?? [item.kind, item.category]
 });
 
@@ -571,6 +588,217 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
       shortcut: { key: 'I' }
     },
     sidebar: { category: 'sources', subcategory: 'dc' }
+  },
+  {
+    id: 'ac-voltage-source',
+    displayName: 'AC Voltage Source',
+    kind: 'ac-voltage-source',
+    category: 'sources',
+    subcategory: 'ac',
+    description: 'Sine-wave source for AC sweeps and sinusoidal excitation.',
+    tags: ['source', 'ac', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      amplitudeVolts: { type: 'number', label: 'Amplitude', unit: 'V', min: 0 },
+      frequencyHz: { type: 'number', label: 'Frequency', unit: 'Hz', min: 0 },
+      dcOffsetVolts: { type: 'number', label: 'DC offset', unit: 'V' }
+    },
+    solverBehavior: { model: 'ac-voltage-source', propertyMap: { amplitudeVolts: 'voltage', frequencyHz: 'nonIdeal.rippleFrequencyHz' } },
+    support: { level: 'partial', notes: 'AC/transient excitation only; DC operating point is not modeled.' },
+    defaultProps: { amplitudeVolts: 1, frequencyHz: 1000, dcOffsetVolts: 0 },
+    metadata: { aliases: ['Sine source', 'AC source'], shortcut: { key: 'A', id: 'place-ac-source' } },
+    sidebar: { category: 'sources', subcategory: 'ac' }
+  },
+  {
+    id: 'pulse-voltage-source',
+    displayName: 'Pulse Source',
+    kind: 'pulse-voltage-source',
+    category: 'sources',
+    subcategory: 'pulse',
+    description: 'Pulse generator for digital-like transient excitation.',
+    tags: ['source', 'pulse', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      lowLevelVolts: { type: 'number', label: 'Low level', unit: 'V' },
+      highLevelVolts: { type: 'number', label: 'High level', unit: 'V' },
+      frequencyHz: { type: 'number', label: 'Frequency', unit: 'Hz', min: 0 }
+    },
+    solverBehavior: { model: 'pulse-voltage-source', propertyMap: { highLevelVolts: 'voltage', frequencyHz: 'nonIdeal.rippleFrequencyHz' } },
+    support: { level: 'partial', notes: 'Transient-mode behavior only.' },
+    defaultProps: { lowLevelVolts: 0, highLevelVolts: 5, frequencyHz: 1000 },
+    metadata: { aliases: ['Square source', 'Clock source'], shortcut: { key: 'U', id: 'place-pulse-source' } },
+    sidebar: { category: 'sources', subcategory: 'pulse' }
+  },
+  {
+    id: 'reference-source',
+    displayName: 'Reference Source',
+    kind: 'reference-source',
+    category: 'sources',
+    subcategory: 'reference',
+    description: 'Precision DC reference source.',
+    tags: ['source', 'reference', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      voltage: { type: 'number', label: 'Reference voltage', unit: 'V' },
+      tempcoPpmPerC: { type: 'number', label: 'Tempco', unit: 'ppm/°C' }
+    },
+    solverBehavior: { model: 'voltage-source', propertyMap: { voltage: 'voltage' } },
+    support: { level: 'full' },
+    defaultProps: { voltageVolts: 2.5, tempcoPpmPerC: 10 },
+    metadata: { aliases: ['Bandgap reference', 'Vref'], shortcut: { key: 'E', id: 'place-reference-source' } },
+    sidebar: { category: 'sources', subcategory: 'reference' }
+  },
+  {
+    id: 'battery-cell',
+    displayName: 'Battery Cell',
+    kind: 'battery-cell',
+    category: 'sources',
+    subcategory: 'battery',
+    description: 'Single-cell battery source.',
+    tags: ['source', 'battery', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      voltage: { type: 'number', label: 'Nominal voltage', unit: 'V' },
+      internalResistance: { type: 'number', label: 'Internal resistance', unit: 'Ω', min: 0 }
+    },
+    solverBehavior: { model: 'voltage-source', propertyMap: { voltage: 'voltage', internalResistance: 'nonIdeal.internalResistance' } },
+    support: { level: 'partial', notes: 'Equivalent DC source model only.' },
+    defaultProps: { voltageVolts: 3.7, internalResistanceOhms: 0.08 },
+    metadata: { aliases: ['Li-ion cell', 'Cell'], shortcut: { key: 'Y', id: 'place-battery-cell' } },
+    sidebar: { category: 'sources', subcategory: 'battery' }
+  },
+  {
+    id: 'battery-pack',
+    displayName: 'Battery Pack',
+    kind: 'battery-pack',
+    category: 'sources',
+    subcategory: 'battery',
+    description: 'Multi-cell battery pack source.',
+    tags: ['source', 'battery', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      voltage: { type: 'number', label: 'Pack voltage', unit: 'V' },
+      capacityAh: { type: 'number', label: 'Capacity', unit: 'Ah', min: 0 }
+    },
+    solverBehavior: { model: 'voltage-source', propertyMap: { voltage: 'voltage' } },
+    support: { level: 'partial', notes: 'DC equivalent model; no SOC dynamics yet.' },
+    defaultProps: { voltageVolts: 12, capacityAh: 2.2 },
+    metadata: { aliases: ['Battery'], shortcut: { key: 'K', id: 'place-battery-pack' } },
+    sidebar: { category: 'sources', subcategory: 'battery' }
+  },
+  {
+    id: 'battery-coin-cell',
+    displayName: 'Coin Cell',
+    kind: 'battery-coin-cell',
+    category: 'sources',
+    subcategory: 'battery',
+    description: 'Compact coin-cell battery source.',
+    tags: ['source', 'battery', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      voltage: { type: 'number', label: 'Nominal voltage', unit: 'V' },
+      internalResistance: { type: 'number', label: 'Internal resistance', unit: 'Ω', min: 0 }
+    },
+    solverBehavior: { model: 'voltage-source', propertyMap: { voltage: 'voltage', internalResistance: 'nonIdeal.internalResistance' } },
+    support: { level: 'partial', notes: 'Static Thevenin approximation.' },
+    defaultProps: { voltageVolts: 3, internalResistanceOhms: 10 },
+    metadata: { aliases: ['CR2032'], shortcut: { key: 'N', id: 'place-battery-coin' } },
+    sidebar: { category: 'sources', subcategory: 'battery' }
+  },
+  {
+    id: 'ldo-regulator',
+    displayName: 'LDO Regulator',
+    kind: 'ldo-regulator',
+    category: 'power',
+    subcategory: 'regulation',
+    description: 'Linear low-dropout voltage regulator.',
+    tags: ['power', 'regulator', 'ldo', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      outputVoltageVolts: { type: 'number', label: 'Output voltage', unit: 'V' },
+      dropoutVolts: { type: 'number', label: 'Dropout', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'ldo-regulator', propertyMap: { outputVoltageVolts: 'voltage' } },
+    support: { level: 'partial', notes: 'Idealized regulation only in DC.' },
+    defaultProps: { outputVoltageVolts: 3.3, dropoutVolts: 0.2 },
+    metadata: { aliases: ['Linear regulator'], shortcut: { key: 'Z', id: 'place-ldo' } },
+    sidebar: { category: 'power', subcategory: 'regulation' }
+  },
+  {
+    id: 'buck-regulator',
+    displayName: 'Buck Regulator',
+    kind: 'buck-regulator',
+    category: 'power',
+    subcategory: 'conversion',
+    description: 'Step-down switching regulator block.',
+    tags: ['power', 'buck', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      outputVoltageVolts: { type: 'number', label: 'Output voltage', unit: 'V' },
+      efficiencyPct: { type: 'number', label: 'Efficiency', unit: '%', min: 0, max: 100 }
+    },
+    solverBehavior: { model: 'buck-regulator', propertyMap: { outputVoltageVolts: 'voltage' } },
+    support: { level: 'partial', notes: 'Averaged DC model only.' },
+    defaultProps: { outputVoltageVolts: 5, efficiencyPct: 90 },
+    metadata: { aliases: ['Step-down converter'], shortcut: { key: 'W', id: 'place-buck' } },
+    sidebar: { category: 'power', subcategory: 'conversion' }
+  },
+  {
+    id: 'boost-regulator',
+    displayName: 'Boost Regulator',
+    kind: 'boost-regulator',
+    category: 'power',
+    subcategory: 'conversion',
+    description: 'Step-up switching regulator block.',
+    tags: ['power', 'boost', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      outputVoltageVolts: { type: 'number', label: 'Output voltage', unit: 'V' },
+      efficiencyPct: { type: 'number', label: 'Efficiency', unit: '%', min: 0, max: 100 }
+    },
+    solverBehavior: { model: 'boost-regulator', propertyMap: { outputVoltageVolts: 'voltage' } },
+    support: { level: 'partial', notes: 'Averaged DC model only.' },
+    defaultProps: { outputVoltageVolts: 12, efficiencyPct: 88 },
+    metadata: { aliases: ['Step-up converter'], shortcut: { key: 'J', id: 'place-boost' } },
+    sidebar: { category: 'power', subcategory: 'conversion' }
+  },
+  {
+    id: 'charge-pump',
+    displayName: 'Charge Pump',
+    kind: 'charge-pump',
+    category: 'power',
+    subcategory: 'charging',
+    description: 'Switched-capacitor converter macro model.',
+    tags: ['power', 'charge-pump', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      targetVoltageVolts: { type: 'number', label: 'Target voltage', unit: 'V' },
+      switchingFrequencyHz: { type: 'number', label: 'Switching frequency', unit: 'Hz', min: 0 }
+    },
+    solverBehavior: { model: 'charge-pump', propertyMap: { targetVoltageVolts: 'voltage' } },
+    support: { level: 'visual-only', notes: 'Placement/documentation only. Solver support pending.' },
+    defaultProps: { targetVoltageVolts: 9, switchingFrequencyHz: 100000 },
+    metadata: { aliases: ['Switched capacitor'], shortcut: { key: 'H', id: 'place-charge-pump' } },
+    sidebar: { category: 'power', subcategory: 'charging' }
+  },
+  {
+    id: 'current-regulator',
+    displayName: 'Current Regulator',
+    kind: 'current-regulator',
+    category: 'power',
+    subcategory: 'current',
+    description: 'Constant-current regulator element.',
+    tags: ['power', 'current', 'regulator', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      outputCurrentAmps: { type: 'number', label: 'Output current', unit: 'A', min: 0 },
+      complianceVolts: { type: 'number', label: 'Compliance voltage', unit: 'V', min: 0 }
+    },
+    solverBehavior: { model: 'current-regulator', propertyMap: { outputCurrentAmps: 'current' } },
+    support: { level: 'partial', notes: 'DC current-limit behavior only.' },
+    defaultProps: { outputCurrentAmps: 0.02, complianceVolts: 20 },
+    metadata: { aliases: ['Constant current source'], shortcut: { key: 'X', id: 'place-current-reg' } },
+    sidebar: { category: 'power', subcategory: 'current' }
   },
   {
     id: 'diode',

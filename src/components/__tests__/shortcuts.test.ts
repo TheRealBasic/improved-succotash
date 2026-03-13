@@ -22,6 +22,7 @@ const buildCatalogItem = (id: string, metadata?: ComponentCatalogItem['metadata'
   ],
   editablePropertySchema: {},
   solverBehavior: { model: 'resistor' },
+  support: { level: 'full' },
   defaultProps: {},
   metadata,
   sidebar: { category: 'passive', subcategory: 'generic' }

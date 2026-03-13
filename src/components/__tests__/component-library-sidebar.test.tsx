@@ -107,7 +107,7 @@ describe('ComponentLibrarySidebar', () => {
 
   it('keeps drag data type compatible with canvas drop handler', () => {
     render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
-    const resistor = screen.getAllByRole('button', { name: /^Resistor$/i })[0];
+    const resistor = screen.getAllByRole('button', { name: /resistor/i })[0];
     const setData = vi.fn();
     fireEvent.dragStart(resistor, { dataTransfer: { setData } });
     expect(setData).toHaveBeenCalledWith('application/x-component-kind', 'resistor');
@@ -201,6 +201,7 @@ describe('componentCatalog sidebar grouping', () => {
       pins: [],
       editablePropertySchema: {},
       solverBehavior: { model: 'op-amp' },
+      support: { level: 'full' },
       defaultProps: {},
       partNumber: 'LM358N',
       metadata: { aliases: ['Dual Op Amp'] },
@@ -226,6 +227,7 @@ describe('componentCatalog sidebar grouping', () => {
       pins: [],
       editablePropertySchema: {},
       solverBehavior: { model: 'resistor' },
+      support: { level: 'full' },
       defaultProps: {},
       metadata: { aliases: ['bench-item'] },
       sidebar: { category: 'passive', subcategory: 'generic' }
