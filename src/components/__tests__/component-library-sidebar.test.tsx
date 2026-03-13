@@ -28,7 +28,9 @@ describe('ComponentLibrarySidebar', () => {
   it('filters by aliases and persists nested accordion state', () => {
     const { unmount } = render(<ComponentLibrarySidebar shortcutLabel={(id) => id} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Generic\d+/i }));
+    const passiveGeneric = screen.getAllByRole('button', { name: /Generic\d+/i }).find((button) => button.getAttribute('aria-controls')?.includes('passive::generic'));
+    expect(passiveGeneric).toBeDefined();
+    fireEvent.click(passiveGeneric as HTMLElement);
     fireEvent.click(screen.getByRole('button', { name: /Passive\d+/i }));
     fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'operational' } });
     expect(screen.getByText('Op-Amp')).toBeTruthy();

@@ -111,7 +111,13 @@ const componentUnits: Partial<Record<CircuitComponent['catalogTypeId'], Unit>> =
   'logic-latch': 'V',
   'logic-flip-flop': 'V',
   'logic-counter': 'V',
-  'logic-multiplexer': 'V'
+  'logic-multiplexer': 'V',
+  'sensor-thermistor-probe': 'V',
+  'sensor-ldr': 'V',
+  'sensor-hall': 'V',
+  'sensor-pressure': 'V',
+  'sensor-microphone': 'V',
+  'sensor-analog-generic': 'V'
 };
 
 const isVoltageLikeSource = (catalogTypeId: CircuitComponent['catalogTypeId']): boolean =>
@@ -180,6 +186,13 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
     case 'logic-counter':
     case 'logic-multiplexer':
       return component.bridge.highThreshold;
+    case 'sensor-thermistor-probe':
+    case 'sensor-ldr':
+    case 'sensor-hall':
+    case 'sensor-pressure':
+    case 'sensor-microphone':
+    case 'sensor-analog-generic':
+      return component.inputSignal;
     case 'wire':
       return undefined;
     default:
@@ -187,6 +200,36 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
   }
 };
 
+
+
+const isSensorComponent = (component: CircuitComponent): component is Extract<CircuitComponent, { kind: 'sensor' }> => component.kind === 'sensor';
+
+const getSensorOutputVoltage = (
+  component: Extract<CircuitComponent, { kind: 'sensor' }>,
+  diagnostics: SolverDiagnostic[]
+): number => {
+  const sensitivity = component.sensitivity.value ?? 0;
+  const offset = component.offset.value ?? 0;
+  const inputSignal = component.inputSignal.value ?? 0;
+  const supplyMin = component.supplyMin.value ?? Number.NEGATIVE_INFINITY;
+  const supplyMax = component.supplyMax.value ?? Number.POSITIVE_INFINITY;
+
+  if (!Number.isFinite(supplyMin) || !Number.isFinite(supplyMax) || supplyMin >= supplyMax) {
+    diagnostics.push({
+      code: 'unsupported_component_behavior',
+      severity: 'warning',
+      componentId: component.id,
+      message: `Sensor ${component.id} has invalid supply limits; output defaults to offset.`
+    });
+    return offset;
+  }
+
+  let output = offset + sensitivity * inputSignal;
+  if (component.outputClampBehavior === 'saturate') {
+    output = Math.min(Math.max(output, supplyMin), supplyMax);
+  }
+  return output;
+};
 
 const getSwitchEquivalentResistance = (
   component: Extract<CircuitComponent, { kind: 'switch' }>,
@@ -328,6 +371,19 @@ const validateCircuit = (circuit: CircuitState): SolverDiagnostic[] => {
         });
       }
     }
+
+    if (isSensorComponent(component)) {
+      const supplyMin = component.supplyMin.value;
+      const supplyMax = component.supplyMax.value;
+      if (supplyMin == null || supplyMax == null || supplyMin >= supplyMax) {
+        diagnostics.push({
+          code: 'constraint_violation',
+          severity: 'error',
+          message: `Component ${component.id}: supplyMin must be less than supplyMax.`,
+          componentId: component.id
+        });
+      }
+    }
   }
 
   if (circuit.nodes.length > 0) {
@@ -428,7 +484,7 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
     .filter((id) => !knownNodeVoltages.has(id) && !referenceNodeIds.has(id));
 
   const voltageConstraintComponents = circuit.components.filter(
-    (component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'ac-voltage-source' || component.catalogTypeId === 'pulse-voltage-source' || component.catalogTypeId === 'reference-source' || component.catalogTypeId === 'battery-cell' || component.catalogTypeId === 'battery-pack' || component.catalogTypeId === 'battery-coin-cell' || component.catalogTypeId === 'ldo-regulator' || component.catalogTypeId === 'buck-regulator' || component.catalogTypeId === 'boost-regulator' || component.catalogTypeId === 'charge-pump' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor'
+    (component) => component.catalogTypeId === 'voltage-source' || component.catalogTypeId === 'ac-voltage-source' || component.catalogTypeId === 'pulse-voltage-source' || component.catalogTypeId === 'reference-source' || component.catalogTypeId === 'battery-cell' || component.catalogTypeId === 'battery-pack' || component.catalogTypeId === 'battery-coin-cell' || component.catalogTypeId === 'ldo-regulator' || component.catalogTypeId === 'buck-regulator' || component.catalogTypeId === 'boost-regulator' || component.catalogTypeId === 'charge-pump' || component.catalogTypeId === 'wire' || component.catalogTypeId === 'inductor' || component.kind === 'sensor'
   );
 
   const sourceCurrentVarIds = voltageConstraintComponents.map((component) => component.id);
@@ -608,7 +664,11 @@ const buildEquations = (circuit: CircuitState): EquationBuild => {
 
   for (const component of voltageConstraintComponents) {
     const row = new Array<number>(unknownCount).fill(0);
-    const sourceVoltage = isVoltageLikeSource(component.catalogTypeId) && 'voltage' in component ? (component.voltage.value ?? 0) : 0;
+    const sourceVoltage = isSensorComponent(component)
+      ? getSensorOutputVoltage(component, diagnostics)
+      : isVoltageLikeSource(component.catalogTypeId) && 'voltage' in component
+        ? (component.voltage.value ?? 0)
+        : 0;
     const rowTerms: EquationTraceTerm[] = [];
     const rowConstants: EquationTraceConstant[] = [];
 

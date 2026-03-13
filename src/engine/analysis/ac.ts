@@ -86,6 +86,16 @@ const linearSweep = (start: number, stop: number, points: number): number[] => {
 };
 
 const getSourceVoltage = (component: CircuitComponent): number => {
+  if (component.kind === 'sensor') {
+    const sensitivity = component.sensitivity.value ?? 0;
+    const offset = component.offset.value ?? 0;
+    const input = component.inputSignal.value ?? 0;
+    const unclamped = offset + sensitivity * input;
+    if (component.outputClampBehavior === 'saturate') {
+      return Math.min(Math.max(unclamped, component.supplyMin.value ?? Number.NEGATIVE_INFINITY), component.supplyMax.value ?? Number.POSITIVE_INFINITY);
+    }
+    return unclamped;
+  }
   if (!['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump'].includes(component.catalogTypeId)) return 0;
   if (!('voltage' in component)) return 0;
   return (component.voltage.value ?? 0) + (component.nonIdeal?.rippleAmplitude?.value ?? 0);
@@ -99,7 +109,7 @@ const nodeIndexMap = (circuit: CircuitState): { nodeIds: string[]; map: Map<stri
 const buildAndSolveAtFrequency = (circuit: CircuitState, frequency: number): AcPoint => {
   const omega = 2 * Math.PI * frequency;
   const { nodeIds, map } = nodeIndexMap(circuit);
-  const voltageSources = circuit.components.filter((component) => ['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump','wire'].includes(component.catalogTypeId));
+  const voltageSources = circuit.components.filter((component) => ['voltage-source','ac-voltage-source','pulse-voltage-source','reference-source','battery-cell','battery-pack','battery-coin-cell','ldo-regulator','buck-regulator','boost-regulator','charge-pump','wire'].includes(component.catalogTypeId) || component.kind === 'sensor');
   const size = nodeIds.length + voltageSources.length;
 
   const A: Complex[][] = Array.from({ length: size }, () => Array.from({ length: size }, () => c()));

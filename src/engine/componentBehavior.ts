@@ -103,6 +103,13 @@ export const getBehaviorFamilyForCatalogType = (catalogTypeId: ComponentCatalogT
     case 'logic-counter':
     case 'logic-multiplexer':
       return 'digital';
+    case 'sensor-thermistor-probe':
+    case 'sensor-ldr':
+    case 'sensor-hall':
+    case 'sensor-pressure':
+    case 'sensor-microphone':
+    case 'sensor-analog-generic':
+      return 'sensor';
   }
 };
 
@@ -112,7 +119,7 @@ const familyCapabilityRegistry: Record<ComponentKind, CapabilityMap> = {
   switch: reducedCapability({ ac: false, transient: false, monteCarlo: false }),
   amplifier: reducedCapability({ ac: false, transient: false, monteCarlo: false }),
   digital: reducedCapability({ ac: false, transient: false, monteCarlo: false }),
-  sensor: reducedCapability({ dc: false, ac: false, transient: false, monteCarlo: false })
+  sensor: fullCapability
 };
 
 const catalogCapabilityRegistry: Partial<Record<ComponentCatalogTypeId, Partial<CapabilityMap>>> = {
@@ -149,7 +156,13 @@ const catalogCapabilityRegistry: Partial<Record<ComponentCatalogTypeId, Partial<
   'logic-latch': { ac: false, transient: false, monteCarlo: false },
   'logic-flip-flop': { ac: false, transient: false, monteCarlo: false },
   'logic-counter': { ac: false, transient: false, monteCarlo: false },
-  'logic-multiplexer': { ac: false, transient: false, monteCarlo: false }
+  'logic-multiplexer': { ac: false, transient: false, monteCarlo: false },
+  'sensor-thermistor-probe': { dc: true, ac: true, transient: true, monteCarlo: true },
+  'sensor-ldr': { dc: true, ac: true, transient: true, monteCarlo: true },
+  'sensor-hall': { dc: true, ac: true, transient: true, monteCarlo: true },
+  'sensor-pressure': { dc: true, ac: true, transient: true, monteCarlo: true },
+  'sensor-microphone': { dc: true, ac: true, transient: true, monteCarlo: true },
+  'sensor-analog-generic': { dc: true, ac: true, transient: true, monteCarlo: true }
 };
 
 export const getComponentCapabilities = (component: CircuitComponent): CapabilityMap => {

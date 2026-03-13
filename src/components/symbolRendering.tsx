@@ -21,7 +21,7 @@ const NO_SYMBOL: ReactNode = null;
 export const SYMBOL_RENDERER_DEFINITIONS: SymbolRendererDefinition[] = [
   {
     rendererId: 'line-only',
-    supportedKinds: ['resistor', 'capacitor', 'inductor', 'voltage-source', 'current-source', 'ac-voltage-source', 'pulse-voltage-source', 'reference-source', 'battery-cell', 'battery-pack', 'battery-coin-cell', 'ldo-regulator', 'buck-regulator', 'boost-regulator', 'charge-pump', 'current-regulator', 'switch-spst', 'switch-spdt', 'switch-dpdt', 'relay-reed', 'relay-ssr', 'switch-analog', 'wire'],
+    supportedKinds: ['resistor', 'capacitor', 'inductor', 'voltage-source', 'current-source', 'ac-voltage-source', 'pulse-voltage-source', 'reference-source', 'battery-cell', 'battery-pack', 'battery-coin-cell', 'ldo-regulator', 'buck-regulator', 'boost-regulator', 'charge-pump', 'current-regulator', 'switch-spst', 'switch-spdt', 'switch-dpdt', 'relay-reed', 'relay-ssr', 'switch-analog', 'sensor-thermistor-probe', 'sensor-ldr', 'sensor-hall', 'sensor-pressure', 'sensor-microphone', 'sensor-analog-generic', 'wire'],
     expectedPinCounts: [2],
     render: () => NO_SYMBOL
   },
