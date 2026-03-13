@@ -47,6 +47,10 @@ export type ComponentCatalogTypeId =
   | 'relay-ssr'
   | 'switch-analog'
   | 'op-amp'
+  | 'comparator'
+  | 'instrumentation-amplifier'
+  | 'generic-regulator-controller'
+  | 'voltage-reference'
   | 'logic-gate'
   | 'wire';
 
@@ -169,10 +173,12 @@ export type ControlledSwitchComponent = ComponentBase & {
 
 export type OpAmpComponent = ComponentBase & {
   kind: 'amplifier';
-  catalogTypeId: 'op-amp';
+  catalogTypeId: 'op-amp' | 'comparator' | 'instrumentation-amplifier' | 'generic-regulator-controller' | 'voltage-reference';
   gain: ValueMetadata;
   outputLimitHigh: ValueMetadata;
   outputLimitLow: ValueMetadata;
+  inputOffset?: ValueMetadata;
+  bandwidthHz?: ValueMetadata;
 };
 
 export type LogicGateComponent = ComponentBase & {

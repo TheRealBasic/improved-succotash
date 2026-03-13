@@ -43,7 +43,7 @@ export const SYMBOL_RENDERER_DEFINITIONS: SymbolRendererDefinition[] = [
   },
   {
     rendererId: 'op-amp-triangle',
-    supportedKinds: ['op-amp'],
+    supportedKinds: ['op-amp', 'comparator', 'instrumentation-amplifier', 'generic-regulator-controller', 'voltage-reference'],
     expectedPinCounts: [5, 8],
     render: (midX, midY) => (
       <polygon

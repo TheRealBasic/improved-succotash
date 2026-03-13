@@ -244,6 +244,22 @@ const mosfetPropertySchema: Record<string, ComponentEditableProperty> = {
   reverseTransferCapacitancePf: { type: 'number', label: 'Reverse transfer capacitance', unit: 'pF', min: 0 }
 };
 
+const analogMacroAmplifierPropertySchema: Record<string, ComponentEditableProperty> = {
+  gain: { type: 'number', label: 'Gain', min: 1 },
+  outputLimitHigh: { type: 'number', label: 'Saturation high rail', unit: 'V' },
+  outputLimitLow: { type: 'number', label: 'Saturation low rail', unit: 'V' },
+  inputOffset: { type: 'number', label: 'Input offset', unit: 'V' },
+  bandwidthHz: { type: 'number', label: 'Small-signal bandwidth (approx)', unit: 'Hz', min: 0 }
+};
+
+const analogMacroAmplifierPropertyMap = {
+  gain: 'gain',
+  outputLimitHigh: 'outputLimitHigh',
+  outputLimitLow: 'outputLimitLow',
+  inputOffset: 'inputOffset',
+  bandwidthHz: 'bandwidthHz'
+};
+
 const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
   {
     id: 'resistor',
@@ -1172,18 +1188,81 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
     category: 'ics',
     subcategory: 'generic',
     description: 'Generic operational amplifier macro model.',
-    tags: ['ic', 'analog', 'generic'],
+    tags: ['ic', 'analog', 'generic', 'fully-simulated'],
     pinCount: 5,
-    editablePropertySchema: {
-      gain: { type: 'number', label: 'Open-loop gain', min: 1 }
-    },
-    solverBehavior: { model: 'op-amp', propertyMap: { gain: 'gain' } },
-    defaultProps: { openLoopGain: 100000 },
+    editablePropertySchema: analogMacroAmplifierPropertySchema,
+    solverBehavior: { model: 'op-amp', propertyMap: analogMacroAmplifierPropertyMap },
+    support: { level: 'partial', notes: 'DC macro-model with gain, rail saturation, and offset. AC/transient frequency dynamics are not modeled.' },
+    defaultProps: { gain: 100000, outputLimitHigh: 12, outputLimitLow: -12, inputOffset: 0, bandwidthHz: 1000000 },
     metadata: {
       aliases: ['Operational Amplifier'],
       shortcut: { key: 'P', id: 'place-opamp' }
     },
     sidebar: { category: 'ics', subcategory: 'op-amps' }
+  },
+  {
+    id: 'comparator',
+    displayName: 'Comparator',
+    kind: 'comparator',
+    category: 'ics',
+    subcategory: 'op-amps',
+    description: 'Comparator macro-model reusing op-amp-like high-gain rail-limited behavior.',
+    tags: ['ic', 'analog', 'comparator', 'threshold', 'new'],
+    pinCount: 5,
+    editablePropertySchema: analogMacroAmplifierPropertySchema,
+    solverBehavior: { model: 'op-amp', propertyMap: analogMacroAmplifierPropertyMap },
+    support: { level: 'partial', notes: 'DC threshold/saturation behavior only; no propagation delay or hysteresis dynamics.' },
+    defaultProps: { gain: 250000, outputLimitHigh: 5, outputLimitLow: 0, inputOffset: 0, bandwidthHz: 1000000 },
+    metadata: { aliases: ['Voltage Comparator'] },
+    sidebar: { category: 'ics', subcategory: 'op-amps' }
+  },
+  {
+    id: 'instrumentation-amplifier',
+    displayName: 'Instrumentation Amplifier',
+    kind: 'instrumentation-amplifier',
+    category: 'ics',
+    subcategory: 'op-amps',
+    description: 'Instrumentation amplifier macro-model using existing analog gain/rail behavior.',
+    tags: ['ic', 'analog', 'instrumentation', 'gain-stage', 'new'],
+    pinCount: 5,
+    editablePropertySchema: analogMacroAmplifierPropertySchema,
+    solverBehavior: { model: 'op-amp', propertyMap: analogMacroAmplifierPropertyMap },
+    support: { level: 'partial', notes: 'DC gain stage approximation; CMRR, noise, and bandwidth roll-off are not modeled.' },
+    defaultProps: { gain: 1000, outputLimitHigh: 10, outputLimitLow: -10, inputOffset: 0.0002, bandwidthHz: 500000 },
+    metadata: { aliases: ['In-Amp', 'INA'] },
+    sidebar: { category: 'ics', subcategory: 'op-amps' }
+  },
+  {
+    id: 'generic-regulator-controller',
+    displayName: 'Generic Regulator Controller',
+    kind: 'generic-regulator-controller',
+    category: 'power',
+    subcategory: 'regulation',
+    description: 'Generic control amplifier block for regulator/controller feedback loops.',
+    tags: ['power', 'controller', 'regulator', 'analog', 'new'],
+    pinCount: 5,
+    editablePropertySchema: analogMacroAmplifierPropertySchema,
+    solverBehavior: { model: 'op-amp', propertyMap: analogMacroAmplifierPropertyMap },
+    support: { level: 'partial', notes: 'DC loop-error amplifier approximation only; compensation poles/zeros are not modeled.' },
+    defaultProps: { gain: 50000, outputLimitHigh: 5, outputLimitLow: 0, inputOffset: 0, bandwidthHz: 200000 },
+    metadata: { aliases: ['Regulator Controller', 'Error Amplifier'] },
+    sidebar: { category: 'power', subcategory: 'regulation' }
+  },
+  {
+    id: 'voltage-reference',
+    displayName: 'Voltage Reference Block',
+    kind: 'voltage-reference',
+    category: 'sources',
+    subcategory: 'reference',
+    description: 'Voltage-reference control block with finite gain and output rails.',
+    tags: ['source', 'reference', 'analog', 'new'],
+    pinCount: 5,
+    editablePropertySchema: analogMacroAmplifierPropertySchema,
+    solverBehavior: { model: 'op-amp', propertyMap: analogMacroAmplifierPropertyMap },
+    support: { level: 'partial', notes: 'DC-only macro behavior; startup transients and noise are not modeled.' },
+    defaultProps: { gain: 10000, outputLimitHigh: 2.5, outputLimitLow: 0, inputOffset: 0, bandwidthHz: 100000 },
+    metadata: { aliases: ['Vref Block', 'Bandgap Block'] },
+    sidebar: { category: 'sources', subcategory: 'reference' }
   },
   {
     id: 'logic-gate',

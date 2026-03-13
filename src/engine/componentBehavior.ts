@@ -89,6 +89,10 @@ export const getBehaviorFamilyForCatalogType = (catalogTypeId: ComponentCatalogT
     case 'switch-analog':
       return 'switch';
     case 'op-amp':
+    case 'comparator':
+    case 'instrumentation-amplifier':
+    case 'generic-regulator-controller':
+    case 'voltage-reference':
       return 'amplifier';
     case 'logic-gate':
       return 'digital';
@@ -127,6 +131,10 @@ const catalogCapabilityRegistry: Partial<Record<ComponentCatalogTypeId, Partial<
   'relay-ssr': { ac: false, transient: false, monteCarlo: false },
   'switch-analog': { ac: false, transient: false, monteCarlo: false },
   'op-amp': { ac: false, transient: false, monteCarlo: false },
+  comparator: { ac: false, transient: false, monteCarlo: false },
+  'instrumentation-amplifier': { ac: false, transient: false, monteCarlo: false },
+  'generic-regulator-controller': { ac: false, transient: false, monteCarlo: false },
+  'voltage-reference': { ac: false, transient: false, monteCarlo: false },
   'logic-gate': { ac: false, transient: false, monteCarlo: false }
 };
 
@@ -153,12 +161,18 @@ export const getUnsupportedComponentDiagnostics = (
 ): SolverDiagnostic[] =>
   circuit.components
     .filter((component) => !getComponentCapabilities(component)[analysisType])
-    .map((component) => ({
-      code: 'unsupported_analysis_mode' as const,
-      severity: 'warning' as const,
-      componentId: component.id,
-      message: `Component ${component.id} (${component.catalogTypeId}/${getBehaviorFamilyForCatalogType(component.catalogTypeId)}) is not supported by ${analysisType.toUpperCase()} analysis. ${capabilityActionByType[analysisType]}`
-    }));
+    .map((component) => {
+      const family = getBehaviorFamilyForCatalogType(component.catalogTypeId);
+      const macroModelNote = family === 'amplifier'
+        ? 'Macro-model supports DC gain/rail limiting only; frequency response and dynamic behavior are not modeled.'
+        : '';
+      return {
+        code: 'unsupported_analysis_mode' as const,
+        severity: 'warning' as const,
+        componentId: component.id,
+        message: `Component ${component.id} (${component.catalogTypeId}/${family}) is not supported by ${analysisType.toUpperCase()} analysis. ${capabilityActionByType[analysisType]} ${macroModelNote}`.trim()
+      };
+    });
 
 export const filterCircuitByCapability = (circuit: CircuitState, analysisType: AnalysisCapability): CircuitState => ({
   ...circuit,

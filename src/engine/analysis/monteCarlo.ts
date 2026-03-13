@@ -76,8 +76,8 @@ const cloneCircuit = (circuit: CircuitState): CircuitState => ({
     if (component.catalogTypeId === 'mosfet') {
       return { ...component, thresholdVoltage: { ...component.thresholdVoltage }, onResistance: { ...component.onResistance } };
     }
-    if (component.catalogTypeId === 'op-amp') {
-      return { ...component, gain: { ...component.gain }, outputLimitHigh: { ...component.outputLimitHigh }, outputLimitLow: { ...component.outputLimitLow } };
+    if (component.catalogTypeId === 'op-amp' || component.catalogTypeId === 'comparator' || component.catalogTypeId === 'instrumentation-amplifier' || component.catalogTypeId === 'generic-regulator-controller' || component.catalogTypeId === 'voltage-reference') {
+      return { ...component, gain: { ...component.gain }, outputLimitHigh: { ...component.outputLimitHigh }, outputLimitLow: { ...component.outputLimitLow }, inputOffset: component.inputOffset ? { ...component.inputOffset } : undefined, bandwidthHz: component.bandwidthHz ? { ...component.bandwidthHz } : undefined };
     }
     if (component.catalogTypeId === 'logic-gate') {
       return { ...component, bridge: { highThreshold: { ...component.bridge.highThreshold }, lowThreshold: { ...component.bridge.lowThreshold }, highLevel: { ...component.bridge.highLevel }, lowLevel: { ...component.bridge.lowLevel } } };
@@ -124,6 +124,10 @@ const getComponentValueMetadata = (component: CircuitComponent): ValueMetadata |
     case 'mosfet':
       return component.thresholdVoltage;
     case 'op-amp':
+    case 'comparator':
+    case 'instrumentation-amplifier':
+    case 'generic-regulator-controller':
+    case 'voltage-reference':
       return component.gain;
     case 'logic-gate':
       return component.bridge.highThreshold;

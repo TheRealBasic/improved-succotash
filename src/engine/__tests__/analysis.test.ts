@@ -151,6 +151,34 @@ describe('analysis capability gating', () => {
     expect(acResult.diagnostics[0]?.message).toMatch(/replace it with an AC-supported equivalent model/i);
   });
 
+
+
+  it('includes macro-model capability detail for analog amplifier-family blocks in AC analysis', () => {
+    const circuit: CircuitState = {
+      nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
+      components: [
+        {
+          id: 'cmp1',
+          kind: 'amplifier',
+          catalogTypeId: 'comparator',
+          from: 'n1',
+          to: 'gnd',
+          gain: { value: 100000, known: true, computed: false, unit: 'V' },
+          outputLimitHigh: { value: 5, known: true, computed: false, unit: 'V' },
+          outputLimitLow: { value: 0, known: true, computed: false, unit: 'V' },
+          inputOffset: { value: 0.001, known: true, computed: false, unit: 'V' },
+          bandwidthHz: { value: 1e6, known: true, computed: false, unit: 'Hz' }
+        }
+      ]
+    };
+
+    const acResult = runAnalysis(circuit, { mode: 'ac', options: { startHz: 10, stopHz: 1000, points: 3 } });
+    const diag = acResult.diagnostics.find((d) => d.componentId === 'cmp1' && d.code === 'unsupported_analysis_mode');
+
+    expect(diag).toBeDefined();
+    expect(diag?.message).toMatch(/macro-model supports dc gain\/rail limiting only/i);
+  });
+
   it('reports unsupported_analysis_mode when analysis has only unsupported behavior families', () => {
     const unsupportedCircuit: CircuitState = {
       nodes: [{ id: 'gnd', reference: true }, { id: 'n1' }],
