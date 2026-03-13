@@ -79,7 +79,10 @@ export const SIDEBAR_GROUPING = {
     label: 'Passive',
     order: 0,
     subcategories: {
-      generic: { label: 'Generic', order: 0 }
+      generic: { label: 'Generic', order: 0 },
+      resistive: { label: 'Resistive', order: 1 },
+      capacitive: { label: 'Capacitive', order: 2 },
+      magnetic: { label: 'Magnetic', order: 3 }
     }
   },
   sources: {
@@ -244,6 +247,286 @@ const COMPONENT_CATALOG_ITEMS_LEGACY: LegacyComponentCatalogItem[] = [
       shortcut: { key: 'L' }
     },
     sidebar: { category: 'passive', subcategory: 'generic' }
+  },
+  {
+    id: 'potentiometer-trimpot',
+    displayName: 'Potentiometer',
+    kind: 'resistor',
+    category: 'passive',
+    subcategory: 'resistive',
+    description: 'Three-terminal variable resistor for manual analog tuning.',
+    tags: ['passive', 'resistive', 'variable', 'potentiometer', 'trim', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      resistanceOhms: { type: 'number', label: 'Nominal resistance', unit: 'Ω', min: 1 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      tempcoPpmPerC: { type: 'number', label: 'Tempco', unit: 'ppm/°C' },
+      wiperPosition: { type: 'number', label: 'Wiper position', min: 0, max: 1 }
+    },
+    solverBehavior: {
+      model: 'resistor',
+      propertyMap: { resistanceOhms: 'resistance', tolerancePct: 'resistance.tolerancePct', tempcoPpmPerC: 'resistance.tempcoPpm' }
+    },
+    defaultProps: { resistanceOhms: 10000, tolerancePct: 10, tempcoPpmPerC: 150, wiperPosition: 0.5 },
+    metadata: {
+      aliases: ['Pot', 'Variable resistor', 'Rvar'],
+      shortcut: { key: 'RP' }
+    },
+    partNumber: 'B10K',
+    manufacturer: 'Bourns',
+    datasheetUrl: 'https://example.com/datasheets/b10k.pdf',
+    packageHint: 'Panel-mount rotary',
+    footprintHint: 'POT-TH-3PIN',
+    sidebar: { category: 'passive', subcategory: 'resistive' }
+  },
+  {
+    id: 'trimmer-resistor',
+    displayName: 'Trimmer Resistor',
+    kind: 'resistor',
+    category: 'passive',
+    subcategory: 'resistive',
+    description: 'Single-turn trimmer potentiometer for calibration adjustments.',
+    tags: ['passive', 'resistive', 'trim', 'calibration', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      resistanceOhms: { type: 'number', label: 'Nominal resistance', unit: 'Ω', min: 1 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      tempcoPpmPerC: { type: 'number', label: 'Tempco', unit: 'ppm/°C' }
+    },
+    solverBehavior: { model: 'resistor', propertyMap: { resistanceOhms: 'resistance' } },
+    defaultProps: { resistanceOhms: 5000, tolerancePct: 25, tempcoPpmPerC: 250 },
+    metadata: {
+      aliases: ['Trimpot', 'Trim pot', 'Preset resistor'],
+      shortcut: { key: 'RT' }
+    },
+    partNumber: '3296W-1-502LF',
+    manufacturer: 'Bourns',
+    datasheetUrl: 'https://example.com/datasheets/3296w.pdf',
+    packageHint: '3296W vertical',
+    footprintHint: 'TRIM-3296W',
+    sidebar: { category: 'passive', subcategory: 'resistive' }
+  },
+  {
+    id: 'thermistor-ntc',
+    displayName: 'NTC Thermistor',
+    kind: 'resistor',
+    category: 'passive',
+    subcategory: 'resistive',
+    description: 'Negative temperature coefficient thermistor for sensing and inrush limiting.',
+    tags: ['passive', 'resistive', 'thermistor', 'ntc', 'temperature', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      resistanceOhms: { type: 'number', label: 'Resistance @25°C', unit: 'Ω', min: 1 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      betaKelvin: { type: 'number', label: 'Beta constant', unit: 'K', min: 1 },
+      nominalTempC: { type: 'number', label: 'Nominal temperature', unit: '°C' }
+    },
+    solverBehavior: { model: 'resistor', propertyMap: { resistanceOhms: 'resistance', betaKelvin: 'thermal.beta', nominalTempC: 'resistance.nominalTempC' } },
+    defaultProps: { resistanceOhms: 10000, tolerancePct: 1, betaKelvin: 3950, nominalTempC: 25 },
+    metadata: {
+      aliases: ['Inrush limiter', 'NTC', 'Thermistor'],
+      shortcut: { key: 'NTC' }
+    },
+    partNumber: 'NTCLE100E3103JB0',
+    manufacturer: 'Vishay',
+    datasheetUrl: 'https://example.com/datasheets/ntcle100e3103jb0.pdf',
+    packageHint: 'Radial bead',
+    footprintHint: 'THERMISTOR-RADIAL',
+    sidebar: { category: 'passive', subcategory: 'resistive' }
+  },
+  {
+    id: 'thermistor-ptc',
+    displayName: 'PTC Thermistor',
+    kind: 'resistor',
+    category: 'passive',
+    subcategory: 'resistive',
+    description: 'Positive temperature coefficient thermistor for resettable protection.',
+    tags: ['passive', 'resistive', 'thermistor', 'ptc', 'protection', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      resistanceOhms: { type: 'number', label: 'Cold resistance', unit: 'Ω', min: 0.001 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      tripCurrentAmps: { type: 'number', label: 'Trip current', unit: 'A', min: 0 },
+      holdCurrentAmps: { type: 'number', label: 'Hold current', unit: 'A', min: 0 }
+    },
+    solverBehavior: { model: 'resistor', propertyMap: { resistanceOhms: 'resistance' } },
+    defaultProps: { resistanceOhms: 1.5, tolerancePct: 20, tripCurrentAmps: 0.5, holdCurrentAmps: 0.25 },
+    metadata: {
+      aliases: ['Resettable fuse', 'Polyfuse', 'PPTC'],
+      shortcut: { key: 'PTC' }
+    },
+    partNumber: 'MF-R050',
+    manufacturer: 'Bourns',
+    datasheetUrl: 'https://example.com/datasheets/mf-r050.pdf',
+    packageHint: 'Radial disc',
+    footprintHint: 'PPTC-RADIAL',
+    sidebar: { category: 'passive', subcategory: 'resistive' }
+  },
+  {
+    id: 'varistor-mov',
+    displayName: 'Varistor (MOV)',
+    kind: 'resistor',
+    category: 'passive',
+    subcategory: 'resistive',
+    description: 'Voltage-dependent resistor for transient suppression.',
+    tags: ['passive', 'resistive', 'varistor', 'mov', 'surge-protection', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      varistorVoltageVolts: { type: 'number', label: 'Varistor voltage', unit: 'V', min: 1 },
+      clampVoltageVolts: { type: 'number', label: 'Clamp voltage', unit: 'V', min: 1 },
+      surgeCurrentAmps: { type: 'number', label: 'Peak surge current', unit: 'A', min: 0 }
+    },
+    solverBehavior: { model: 'resistor', propertyMap: { varistorVoltageVolts: 'protection.varistorVoltage' } },
+    defaultProps: { varistorVoltageVolts: 470, clampVoltageVolts: 775, surgeCurrentAmps: 4500 },
+    metadata: {
+      aliases: ['MOV', 'Surge suppressor'],
+      shortcut: { key: 'MOV' }
+    },
+    partNumber: 'V14E300P',
+    manufacturer: 'Littelfuse',
+    datasheetUrl: 'https://example.com/datasheets/v14e300p.pdf',
+    packageHint: '14 mm radial disc',
+    footprintHint: 'MOV-14MM',
+    sidebar: { category: 'passive', subcategory: 'resistive' }
+  },
+  {
+    id: 'capacitor-electrolytic',
+    displayName: 'Electrolytic Capacitor',
+    kind: 'capacitor',
+    category: 'passive',
+    subcategory: 'capacitive',
+    description: 'Polarized high-capacitance capacitor for bulk filtering.',
+    tags: ['passive', 'capacitive', 'electrolytic', 'polarized', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      capacitanceFarads: { type: 'number', label: 'Capacitance', unit: 'F', min: 0 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      maxVoltageVolts: { type: 'number', label: 'Rated voltage', unit: 'V', min: 0 },
+      esrOhms: { type: 'number', label: 'ESR', unit: 'Ω', min: 0 }
+    },
+    solverBehavior: { model: 'capacitor', propertyMap: { capacitanceFarads: 'capacitance', esrOhms: 'esr' } },
+    defaultProps: { capacitanceFarads: 0.000047, tolerancePct: 20, maxVoltageVolts: 25, esrOhms: 0.8 },
+    metadata: {
+      aliases: ['Electrolytic', 'Polarized capacitor', 'Bulk cap'],
+      shortcut: { key: 'CE' }
+    },
+    partNumber: 'EEU-FR1E470',
+    manufacturer: 'Panasonic',
+    datasheetUrl: 'https://example.com/datasheets/eeu-fr1e470.pdf',
+    packageHint: 'Radial can',
+    footprintHint: 'CAP-RADIAL-D8',
+    sidebar: { category: 'passive', subcategory: 'capacitive' }
+  },
+  {
+    id: 'capacitor-ceramic',
+    displayName: 'Ceramic Capacitor',
+    kind: 'capacitor',
+    category: 'passive',
+    subcategory: 'capacitive',
+    description: 'Low-ESR ceramic capacitor for decoupling and filtering.',
+    tags: ['passive', 'capacitive', 'ceramic', 'decoupling', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      capacitanceFarads: { type: 'number', label: 'Capacitance', unit: 'F', min: 0 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      dielectric: { type: 'enum', label: 'Dielectric', options: ['C0G', 'X7R', 'X5R', 'Y5V'] },
+      tempcoPpmPerC: { type: 'number', label: 'Tempco', unit: 'ppm/°C' }
+    },
+    solverBehavior: { model: 'capacitor', propertyMap: { capacitanceFarads: 'capacitance' } },
+    defaultProps: { capacitanceFarads: 0.0000001, tolerancePct: 10, dielectric: 'X7R', tempcoPpmPerC: 15 },
+    metadata: {
+      aliases: ['MLCC', 'Ceramic cap'],
+      shortcut: { key: 'CC' }
+    },
+    partNumber: 'GRM188R71H104KA93D',
+    manufacturer: 'Murata',
+    datasheetUrl: 'https://example.com/datasheets/grm188r71h104ka93d.pdf',
+    packageHint: '0603 SMD',
+    footprintHint: 'C0603',
+    sidebar: { category: 'passive', subcategory: 'capacitive' }
+  },
+  {
+    id: 'capacitor-film',
+    displayName: 'Film Capacitor',
+    kind: 'capacitor',
+    category: 'passive',
+    subcategory: 'capacitive',
+    description: 'Stable polypropylene film capacitor for timing and snubber networks.',
+    tags: ['passive', 'capacitive', 'film', 'timing', 'snubber', 'fully-simulated', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      capacitanceFarads: { type: 'number', label: 'Capacitance', unit: 'F', min: 0 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      maxVoltageVolts: { type: 'number', label: 'Rated voltage', unit: 'V', min: 0 },
+      tempcoPpmPerC: { type: 'number', label: 'Tempco', unit: 'ppm/°C' }
+    },
+    solverBehavior: { model: 'capacitor', propertyMap: { capacitanceFarads: 'capacitance' } },
+    defaultProps: { capacitanceFarads: 0.000001, tolerancePct: 5, maxVoltageVolts: 63, tempcoPpmPerC: 100 },
+    metadata: {
+      aliases: ['Polypropylene capacitor', 'Film cap'],
+      shortcut: { key: 'CF' }
+    },
+    partNumber: 'ECW-F6105JL',
+    manufacturer: 'Panasonic',
+    datasheetUrl: 'https://example.com/datasheets/ecw-f6105jl.pdf',
+    packageHint: 'Radial box',
+    footprintHint: 'FILM-RADIAL-10MM',
+    sidebar: { category: 'passive', subcategory: 'capacitive' }
+  },
+  {
+    id: 'ferrite-bead',
+    displayName: 'Ferrite Bead',
+    kind: 'resistor',
+    category: 'passive',
+    subcategory: 'magnetic',
+    description: 'Frequency-dependent impedance bead for EMI suppression.',
+    tags: ['passive', 'magnetic', 'emi', 'filter', 'bead', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      dcResistanceOhms: { type: 'number', label: 'DC resistance', unit: 'Ω', min: 0 },
+      impedanceAt100MHzOhms: { type: 'number', label: 'Impedance @100MHz', unit: 'Ω', min: 0 },
+      currentRatingAmps: { type: 'number', label: 'Current rating', unit: 'A', min: 0 }
+    },
+    solverBehavior: { model: 'resistor', propertyMap: { dcResistanceOhms: 'resistance' } },
+    defaultProps: { dcResistanceOhms: 0.05, impedanceAt100MHzOhms: 120, currentRatingAmps: 2 },
+    metadata: {
+      aliases: ['EMI bead', 'Chip bead', 'Ferrite'],
+      shortcut: { key: 'FB' }
+    },
+    partNumber: 'BLM18AG121SN1D',
+    manufacturer: 'Murata',
+    datasheetUrl: 'https://example.com/datasheets/blm18ag121sn1d.pdf',
+    packageHint: '0603 SMD',
+    footprintHint: 'FB0603',
+    sidebar: { category: 'passive', subcategory: 'magnetic' }
+  },
+  {
+    id: 'coupled-inductor',
+    displayName: 'Coupled Inductor',
+    kind: 'inductor',
+    category: 'passive',
+    subcategory: 'magnetic',
+    description: 'Magnetically coupled inductor element for common-mode and flyback topologies.',
+    tags: ['passive', 'magnetic', 'inductor', 'coupled', 'transformer', 'new'],
+    pinCount: 2,
+    editablePropertySchema: {
+      inductanceHenries: { type: 'number', label: 'Primary inductance', unit: 'H', min: 0 },
+      tolerancePct: { type: 'number', label: 'Tolerance', unit: '%', min: 0 },
+      couplingFactor: { type: 'number', label: 'Coupling factor', min: 0, max: 1 },
+      saturationCurrentAmps: { type: 'number', label: 'Saturation current', unit: 'A', min: 0 }
+    },
+    solverBehavior: { model: 'inductor', propertyMap: { inductanceHenries: 'inductance' } },
+    defaultProps: { inductanceHenries: 0.00047, tolerancePct: 20, couplingFactor: 0.98, saturationCurrentAmps: 3 },
+    metadata: {
+      aliases: ['Common mode choke', 'Coupled choke', 'Dual inductor'],
+      shortcut: { key: 'LC' }
+    },
+    partNumber: '744232090',
+    manufacturer: 'Wurth Elektronik',
+    datasheetUrl: 'https://example.com/datasheets/744232090.pdf',
+    packageHint: 'Shielded SMD power inductor',
+    footprintHint: 'L-10X10',
+    sidebar: { category: 'passive', subcategory: 'magnetic' }
   },
   {
     id: 'voltage-source',

@@ -28,8 +28,8 @@ describe('ComponentLibrarySidebar', () => {
   it('filters by aliases and persists nested accordion state', () => {
     const { unmount } = render(<ComponentLibrarySidebar shortcutLabel={(id) => id} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Generic3/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Passive3/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Generic\d+/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Passive\d+/i }));
     fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'operational' } });
     expect(screen.getByText('Op-Amp')).toBeTruthy();
     expect(screen.queryByText('Resistor')).toBeNull();
@@ -37,7 +37,7 @@ describe('ComponentLibrarySidebar', () => {
     unmount();
     window.sessionStorage.clear();
     render(<ComponentLibrarySidebar shortcutLabel={(id) => id} />);
-    expect(screen.getByRole('button', { name: /Passive3/i }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: /Passive\d+/i }).getAttribute('aria-expanded')).toBe('false');
 
     const persisted = JSON.parse(window.localStorage.getItem('circuit-workbench-component-library-state-v1') ?? '{}');
     expect(persisted['passive::passive::generic']).toBe(false);
@@ -46,11 +46,11 @@ describe('ComponentLibrarySidebar', () => {
   it('auto-opens matching branches when searching', () => {
     render(<ComponentLibrarySidebar shortcutLabel={() => 'S'} />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: /ICs5/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /ICs\d+/i })[0]);
     fireEvent.change(screen.getByPlaceholderText(/name, alias, tag, part/i), { target: { value: 'ne555' } });
 
     expect(screen.getByRole('button', { name: /ICs1/i }).getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('button', { name: /Timers1/i }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /Timers\d+/i }).getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByText('Timer IC (NE555)')).toBeTruthy();
   });
 
@@ -138,6 +138,21 @@ describe('componentCatalog sidebar grouping', () => {
     const specialty = COMPONENT_CATALOG.find((category) => category.id === 'specialty');
     const rf = specialty?.subcategories.find((subcategory) => subcategory.id === 'specialty::rf');
     expect(rf?.entries.map((entry) => entry.id)).toContain('ad9833');
+
+    const passive = COMPONENT_CATALOG.find((category) => category.id === 'passive');
+    const resistive = passive?.subcategories.find((subcategory) => subcategory.id === 'passive::resistive');
+    const capacitive = passive?.subcategories.find((subcategory) => subcategory.id === 'passive::capacitive');
+    const magnetic = passive?.subcategories.find((subcategory) => subcategory.id === 'passive::magnetic');
+
+    expect(resistive?.entries.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(['potentiometer-trimpot', 'trimmer-resistor', 'thermistor-ntc', 'thermistor-ptc', 'varistor-mov'])
+    );
+    expect(capacitive?.entries.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(['capacitor-electrolytic', 'capacitor-ceramic', 'capacitor-film'])
+    );
+    expect(magnetic?.entries.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(['ferrite-bead', 'coupled-inductor'])
+    );
   });
 
   it('falls back to legacy sidebar heuristics when sidebar metadata is missing', async () => {
