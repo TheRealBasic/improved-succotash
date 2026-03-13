@@ -1,0 +1,177 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`component symbol catalog validation > tracks an inventory of rendered symbols and pin metadata 1`] = `
+[
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "capacitor",
+    "kind": "capacitor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "inductor",
+    "kind": "inductor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "passive",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "resistor",
+    "kind": "resistor",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "current-source",
+    "kind": "current-source",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "sources",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "voltage-source",
+    "kind": "voltage-source",
+    "pinCount": 2,
+    "rendererId": "line-only",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      2,
+    ],
+    "id": "diode",
+    "kind": "diode",
+    "pinCount": 2,
+    "rendererId": "diode",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "bjt",
+    "kind": "bjt",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "semiconductors",
+    "expectedPinCounts": [
+      3,
+    ],
+    "id": "mosfet",
+    "kind": "mosfet",
+    "pinCount": 3,
+    "rendererId": "transistor-circle",
+  },
+  {
+    "category": "ics",
+    "expectedPinCounts": [
+      3,
+      10,
+      14,
+    ],
+    "id": "logic-gate",
+    "kind": "logic-gate",
+    "pinCount": 3,
+    "rendererId": "logic-gate-block",
+  },
+  {
+    "category": "ics",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "op-amp",
+    "kind": "op-amp",
+    "pinCount": 5,
+    "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "ics",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "lm358",
+    "kind": "op-amp",
+    "pinCount": 8,
+    "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "specialty",
+    "expectedPinCounts": [
+      0,
+    ],
+    "id": "subcircuit",
+    "kind": "subcircuit",
+    "pinCount": 0,
+    "rendererId": "subcircuit-placeholder",
+  },
+  {
+    "category": "rf",
+    "expectedPinCounts": [
+      3,
+      10,
+      14,
+    ],
+    "id": "ad9833",
+    "kind": "logic-gate",
+    "pinCount": 10,
+    "rendererId": "logic-gate-block",
+  },
+  {
+    "category": "timing",
+    "expectedPinCounts": [
+      5,
+      8,
+    ],
+    "id": "ne555",
+    "kind": "op-amp",
+    "pinCount": 8,
+    "rendererId": "op-amp-triangle",
+  },
+  {
+    "category": "interface",
+    "expectedPinCounts": [
+      3,
+      10,
+      14,
+    ],
+    "id": "74hc00",
+    "kind": "logic-gate",
+    "pinCount": 14,
+    "rendererId": "logic-gate-block",
+  },
+]
+`;
+
+exports[`component symbol snapshots > matches representative symbol snapshots for each renderer category 1`] = `
+{
+  "logic": "<rect x="38" y="10" width="24" height="20" fill="none" stroke="#9dffcc" stroke-width="2" rx="4"></rect>",
+  "opAmp": "<polygon points="38,6 38,34 64,20" fill="none" stroke="#9ae6ff" stroke-width="2"></polygon>",
+  "passive": "",
+  "semiconductorDiode": "<polygon points="40,10 40,30 54,20" fill="none" stroke="#ffd36d" stroke-width="2"></polygon><line x1="56" y1="10" x2="56" y2="30" stroke="#ffd36d" stroke-width="2"></line>",
+  "semiconductorTransistor": "<circle cx="50" cy="20" r="10" fill="none" stroke="#ffb4f3" stroke-width="2"></circle>",
+  "source": "",
+  "subcircuit": "",
+}
+`;
